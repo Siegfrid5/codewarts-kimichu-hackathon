@@ -5,10 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "db:migrate": "npx --yes knex migrate:latest",
+    "db:rollback": "npx --yes knex migrate:rollback",
+    "db:seed": "npx --yes knex seed:run",
     "dev": "nodemon index.js",
-    "db:migrate": "knex --knexfile db/knexfile.js migrate:latest",
-    "db:rollback": "knex --knexfile db/knexfile.js migrate:rollback --all",
-    "db:seed": "knex --knexfile db/knexfile.js seed:run",
     "test": "jest --verbose"
   },
   "dependencies": {

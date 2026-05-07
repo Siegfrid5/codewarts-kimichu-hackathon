@@ -16,6 +16,7 @@ const SCTScheduler = require('./sct/scheduler');
 const authRoutes = require('./routes/auth');
 const farmRoutes = require('./routes/farms');
 const panahonRoutes = require('./routes/panahon');
+const consultantRoutes = require('./routes/consultant');
 const chatbotRoutes = require('./routes/chatbot');
 const educationRoutes = require('./routes/education');
 
@@ -75,6 +76,7 @@ app.get('/api/health', async (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/farms', farmRoutes);
 app.use('/api/panahon', panahonRoutes);
+app.use('/api/consultant', consultantRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/education', educationRoutes);
 
@@ -93,6 +95,16 @@ if (config.nodeEnv === 'development') {
   app.post('/api/sct/rainfall-refresh', async (_req, res) => {
     const summary = await SCTScheduler.triggerRainfallRefresh();
     res.json({ success: true });
+  });
+
+  app.post('/api/sct/satellite-refresh', async (_req, res) => {
+    const summary = await SCTScheduler.triggerSatelliteRefresh();
+    res.json({ success: true, summary });
+  });
+
+  app.post('/api/sct/digest', async (_req, res) => {
+    const summary = await SCTScheduler.triggerDigest();
+    res.json({ success: true, summary });
   });
 }
 

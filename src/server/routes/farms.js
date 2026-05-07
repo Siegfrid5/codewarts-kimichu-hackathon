@@ -7,14 +7,17 @@
  */
 
 const express = require('express');
+const Joi = require('joi');
 const Farm = require('../models/Farm');
 const FarmRiskStatus = require('../models/FarmRiskStatus');
-const SatelliteCache = require('../models/SatelliteCache');
-const WeatherCache = require('../models/WeatherCache');
 const DemCache = require('../models/DemCache');
+const WeatherCache = require('../models/WeatherCache');
+const SatelliteCache = require('../models/SatelliteCache');
 const GeeService = require('../services/geeService');
 const WeatherJob = require('../sct/weatherJob');
-const { validate, farmRegistrationSchema } = require('../utils/validation');
+const SmsService = require('../services/smsService');
+const TemplateEngine = require('../services/templateEngine');
+const GeminiService = require('../services/geminiService');
 const { requireAuth } = require('../middleware/auth');
 const { AppError, asyncHandler } = require('../middleware/errorHandler');
 
@@ -85,7 +88,19 @@ router.post('/register', requireAuth, asyncHandler(async (req, res) => {
       await WeatherJob.processMunicipality(farm.municipality, summary);
       console.log(`  ✅ [Bootstrap] Weather fetched & Risk computed.`);
 
-      // TODO: Phase 3 — Send Confirmation SMS via Semaphore
+      // 5. Send Confirmation SMS
+      const englishTemplate = `[GABAYANI] Farm registration successful! Your farm in ${farm.barangay}, ${farm.municipality} (${farm.area_hectares} ha) is now monitored. You will receive alerts and daily digests.`;
+      const translated = await GeminiService.translateForSms(englishTemplate, farm.dialect || 'tagalog');
+      
+      await SmsService.send(
+        farm.phone,
+        translated,
+        englishTemplate,
+        farm.id,
+        'registration',
+        'all_clear'
+      );
+      console.log(`  ✅ [Bootstrap] Confirmation SMS sent to ${farm.phone}`);
 
     } catch (err) {
       console.error(`❌ [Bootstrap] Failed for farm ${farm.id}:`, err);

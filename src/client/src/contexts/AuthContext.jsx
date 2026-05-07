@@ -57,7 +57,8 @@ export function AuthProvider({ children }) {
     const data = await response.json();
 
     if (!data.success) {
-      throw new Error(data.error || 'Login failed');
+      const errorMessage = data.error?.message || data.error || 'Login failed';
+      throw new Error(errorMessage);
     }
 
     setAccessToken(data.data.accessToken);
@@ -81,7 +82,8 @@ export function AuthProvider({ children }) {
     const data = await response.json();
 
     if (!data.success) {
-      throw new Error(data.error || 'Registration failed');
+      const errorMessage = data.error?.message || data.error || 'Registration failed';
+      throw new Error(errorMessage);
     }
 
     setAccessToken(data.data.accessToken);
@@ -109,7 +111,8 @@ export function AuthProvider({ children }) {
     const data = await response.json();
 
     if (!data.success) {
-      throw new Error(data.error || 'Token refresh failed');
+      const errorMessage = data.error?.message || data.error || 'Token refresh failed';
+      throw new Error(errorMessage);
     }
 
     setAccessToken(data.data.accessToken);

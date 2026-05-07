@@ -20,6 +20,9 @@ const SatelliteCache = require('../models/SatelliteCache');
 const FarmRiskStatus = require('../models/FarmRiskStatus');
 const OpenWeatherService = require('../services/openWeatherService');
 const RiskEngine = require('../services/riskEngine');
+const TemplateEngine = require('../services/templateEngine');
+const SmsService = require('../services/smsService');
+const GeminiService = require('../services/geminiService');
 const db = require('../db');
 
 const WeatherJob = {
@@ -132,20 +135,26 @@ const WeatherJob = {
     // Get satellite data from cache
     const satellite = await SatelliteCache.findByFarmId(farm.id);
 
-    // Get current risk status (for GDD running total)
+    // Get current risk status (for GDD running total and wetness hours)
     const currentRisk = await FarmRiskStatus.findByFarmId(farm.id);
     const currentGdd = parseFloat(currentRisk?.gdd_accumulated || 0);
+    const currentWetHours = currentRisk?.consecutive_wet_hours || 0;
 
     // Compute GDD increment from this weather reading
     const gddIncrement = RiskEngine.computeGddIncrement(weatherData.temp_c);
     const newGdd = currentGdd + gddIncrement;
+
+    // Track consecutive wet hours for Blast risk
+    const { BLAST_HUMIDITY_MIN } = require('../constants/thresholds');
+    const isWet = (weatherData.humidity_pct || 0) >= BLAST_HUMIDITY_MIN;
+    const newWetHours = isWet ? currentWetHours + 1 : 0;
 
     // Compute all risk levels
     const bphRisk = RiskEngine.computeBphRisk(newGdd, satellite);
     const blastRisk = RiskEngine.computeBlastRisk(
       weatherData.temp_c,
       weatherData.humidity_pct,
-      0 // TODO: Track consecutive wetness hours from humidity log
+      newWetHours
     );
     const floodRisk = RiskEngine.computeFloodRisk(
       weatherData.rain_1h_mm,
@@ -168,6 +177,7 @@ const WeatherJob = {
       blast_risk: blastRisk,
       flood_risk: finalFloodRisk,
       gdd_accumulated: newGdd,
+      consecutive_wet_hours: newWetHours,
     };
 
     // Upsert risk status
@@ -183,6 +193,106 @@ const WeatherJob = {
         types: alertTypes,
       });
       console.log(`  🔴 RED ALERT: Farm ${farm.farmer_name} (${farm.municipality}) — ${alertTypes.join(', ')}`);
+
+      // Dispatch immediate SMS alert
+      try {
+        const farmWithWeather = {
+          ...farm,
+          weather: weatherData,
+          risk_status: risks,
+          satellite: satellite
+        };
+
+        const englishTemplate = TemplateEngine.generateRedAlert(farmWithWeather, alertTypes);
+        const translated = await GeminiService.translateForSms(englishTemplate, farm.dialect || 'tagalog');
+
+        await SmsService.send(
+          farm.phone,
+          translated,
+          englishTemplate,
+          farm.id,
+          'red_alert',
+          'red'
+        );
+
+        console.log(`  📱 Red Alert SMS sent to ${farm.phone}`);
+
+        // BPH Spread Index: Notify downwind neighbors if BPH alert
+        if (alertTypes.includes('bph')) {
+          await WeatherJob.dispatchBphSpreadWarnings(farm, weatherData, summary);
+        }
+      } catch (err) {
+        console.error(`❌ Failed to send Red Alert SMS: ${err.message}`);
+      }
+    }
+  },
+
+  /**
+   * Dispatch BPH spread warnings to downwind neighbors.
+   * Called when a farm triggers a BPH Red Alert.
+   * 
+   * @param {Object} sourceFarm - The farm that triggered BPH alert
+   * @param {Object} weatherData - Weather data for wind direction
+   * @param {Object} summary - Run summary for logging
+   */
+  async dispatchBphSpreadWarnings(sourceFarm, weatherData, summary) {
+    try {
+      // Get nearby farms within 5km
+      const nearbyFarms = await Farm.findFarmsWithinRadius(
+        sourceFarm.centroid_lat,
+        sourceFarm.centroid_lng,
+        undefined, // Use default BPH_SPREAD_RADIUS_KM
+        sourceFarm.id // Exclude the source farm itself
+      );
+
+      if (nearbyFarms.length === 0) {
+        console.log(`  📍 No nearby farms within 5km of ${sourceFarm.farmer_name}`);
+        return;
+      }
+
+      console.log(`  📍 Found ${nearbyFarms.length} nearby farms within 5km`);
+
+      // Get wind direction from weather data
+      const windDirDeg = weatherData?.wind_dir_deg || 0;
+
+      // Filter for downwind farms
+      const downwindFarms = RiskEngine.findDownwindFarms(
+        sourceFarm,
+        nearbyFarms,
+        windDirDeg
+      );
+
+      if (downwindFarms.length === 0) {
+        console.log(`  🌬️ No downwind farms (wind: ${windDirDeg}°)`);
+        return;
+      }
+
+      console.log(`  🌬️ Warning ${downwindFarms.length} downwind farms`);
+
+      // Send spread warnings to downwind farms
+      for (const farm of downwindFarms) {
+        try {
+          const distanceKm = farm.distance_km;
+          const englishTemplate = TemplateEngine.generateSpreadWarning(distanceKm);
+          const translated = await GeminiService.translateForSms(englishTemplate, farm.dialect || 'tagalog');
+
+          await SmsService.send(
+            farm.phone,
+            translated,
+            englishTemplate,
+            farm.id,
+            'bph_spread',
+            'moderate'
+          );
+
+          console.log(`  📱 Spread warning sent to ${farm.phone} (${distanceKm.toFixed(1)}km downwind)`);
+          summary.spreadWarnings = (summary.spreadWarnings || 0) + 1;
+        } catch (err) {
+          console.error(`❌ Failed to send spread warning to ${farm.phone}: ${err.message}`);
+        }
+      }
+    } catch (err) {
+      console.error(`❌ BPH spread warning dispatch failed: ${err.message}`);
     }
   },
 
