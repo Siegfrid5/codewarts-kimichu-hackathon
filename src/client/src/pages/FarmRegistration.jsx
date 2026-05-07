@@ -19,6 +19,9 @@ export default function FarmRegistration() {
   const [formData, setFormData] = useState({
     farmer_name: '',
     phone: '',
+    username: '',
+    email: '',
+    password: '',
     municipality: '',
     barangay: '',
     dialect: 'tagalog',
@@ -28,6 +31,9 @@ export default function FarmRegistration() {
   const getSteps = () => [
     { id: 'name', title: translations.registration.steps.name.title, question: translations.registration.steps.name.question, field: 'farmer_name', type: 'text', placeholder: translations.registration.steps.name.placeholder },
     { id: 'phone', title: translations.registration.steps.phone.title, question: translations.registration.steps.phone.question, field: 'phone', type: 'text', placeholder: translations.registration.steps.phone.placeholder },
+    { id: 'username', title: 'Create Username', question: 'Choose a username for your account', field: 'username', type: 'text', placeholder: 'username' },
+    { id: 'email', title: 'Email (Optional)', question: 'Add your email address (optional)', field: 'email', type: 'text', placeholder: 'email@example.com' },
+    { id: 'password', title: 'Create Password', question: 'Create a secure password (8+ chars, uppercase, lowercase, number, special char)', field: 'password', type: 'password', placeholder: 'Password' },
     { id: 'municipality', title: translations.registration.steps.municipality.title, question: translations.registration.steps.municipality.question, field: 'municipality', type: 'text', placeholder: translations.registration.steps.municipality.placeholder },
     { id: 'barangay', title: translations.registration.steps.barangay.title, question: translations.registration.steps.barangay.question, field: 'barangay', type: 'text', placeholder: translations.registration.steps.barangay.placeholder },
     { id: 'dialect', title: translations.registration.steps.dialect.title, question: translations.registration.steps.dialect.question, field: 'dialect', type: 'select', options: ['tagalog', 'ilocano', 'cebuano', 'english'] },
@@ -131,26 +137,78 @@ export default function FarmRegistration() {
   const handleSubmit = async () => {
     setLoading(true);
     
-    const geoJsonCoords = polygonCoords.map(p => [p.lng, p.lat]);
-    geoJsonCoords.push([...geoJsonCoords[0]]);
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      
+      // First, register the user
+      const registerResponse = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.farmer_name,
+          phone: formData.phone,
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
 
-    const payload = {
-      ...formData,
-      area_hectares: areaHectares,
-      centroid_lat: centroid.lat,
-      centroid_lng: centroid.lng,
-      polygon_geojson: {
-        type: "Polygon",
-        coordinates: [geoJsonCoords]
+      const registerData = await registerResponse.json();
+      
+      if (!registerData.success) {
+        const errorMessage = registerData.error?.details 
+          ? registerData.error.details.join(', ')
+          : registerData.error?.message || 'Registration failed';
+        throw new Error(errorMessage);
       }
-    };
 
-    console.log("Submitting:", payload);
+      // Then register the farm
+      const geoJsonCoords = polygonCoords.map(p => [p.lng, p.lat]);
+      geoJsonCoords.push([...geoJsonCoords[0]]);
 
-    setTimeout(() => {
-      setLoading(false);
+      const farmPayload = {
+        farmer_name: formData.farmer_name,
+        phone: formData.phone,
+        municipality: formData.municipality,
+        barangay: formData.barangay,
+        dialect: formData.dialect,
+        crop: formData.crop,
+        area_hectares: areaHectares,
+        centroid_lat: centroid.lat,
+        centroid_lng: centroid.lng,
+        polygon_geojson: {
+          type: "Polygon",
+          coordinates: [geoJsonCoords]
+        }
+      };
+
+      const farmResponse = await fetch(`${API_BASE_URL}/api/farms/register`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${registerData.data.accessToken}`
+        },
+        body: JSON.stringify(farmPayload),
+      });
+
+      const farmData = await farmResponse.json();
+      
+      if (!farmData.success) {
+        throw new Error(farmData.error || 'Farm registration failed');
+      }
+
+      // Store tokens in localStorage
+      localStorage.setItem('accessToken', registerData.data.accessToken);
+      localStorage.setItem('refreshToken', registerData.data.refreshToken);
+      localStorage.setItem('user', JSON.stringify(registerData.data.user));
+
       setCurrentStepIndex(steps.length); // Success step
-    }, 2000);
+    } catch (error) {
+      console.error('Registration error:', error);
+      alert(error.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (currentStepIndex >= steps.length) {

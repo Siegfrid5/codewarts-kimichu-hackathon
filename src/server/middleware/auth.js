@@ -3,6 +3,7 @@
  * 
  * Extracts and verifies JWT from Authorization header.
  * Attaches decoded user data to req.user.
+ * Supports access token verification.
  */
 
 const jwt = require('jsonwebtoken');
@@ -23,7 +24,13 @@ function requireAuth(req, _res, next) {
 
   try {
     const decoded = jwt.verify(token, config.jwt.secret);
-    req.user = decoded; // { id, phone, tier }
+    
+    // Verify this is an access token (not a refresh token)
+    if (decoded.type !== 'access') {
+      return next(new AppError('Invalid token type', 401));
+    }
+    
+    req.user = decoded; // { id, phone, tier, type: 'access' }
     next();
   } catch (err) {
     return next(new AppError('Invalid or expired token', 401));

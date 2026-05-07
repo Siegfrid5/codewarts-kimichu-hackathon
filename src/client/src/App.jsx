@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { Sprout, LayoutDashboard, MessageSquare, BookOpen } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import LandingPage from './pages/LandingPage';
@@ -6,14 +6,31 @@ import Dashboard from './pages/Dashboard';
 import FarmRegistration from './pages/FarmRegistration';
 import Chatbot from './pages/Chatbot';
 import Education from './pages/Education';
+import Login from './pages/Login';
 import LanguageToggle from './components/LanguageToggle';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { en } from './translations/en';
 import { tl } from './translations/tl';
 import './index.css';
 
+function ProtectedRoute({ children }) {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return <div className="container" style={{ textAlign: 'center', marginTop: '4rem' }}>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
 function Navbar() {
   const { language } = useLanguage();
+  const { isAuthenticated, user, logout } = useAuth();
   const translations = language === 'en' ? en : tl;
   const [scrolled, setScrolled] = useState(false);
 
@@ -24,6 +41,10 @@ function Navbar() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const handleLogout = async () => {
+    await logout();
+  };
 
   return (
     <nav 
@@ -54,15 +75,41 @@ function Navbar() {
           <Link to="/education" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
             Education
           </Link>
-          <Link to="/dashboard" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
-            {translations.nav.dashboard}
-          </Link>
-          <Link to="/consultant" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
-            {translations.nav.consultant}
-          </Link>
-          <Link to="/register" className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
-            {translations.nav.register}
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link to="/dashboard" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+                {translations.nav.dashboard}
+              </Link>
+              <Link to="/consultant" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+                {translations.nav.consultant}
+              </Link>
+              <Link to="/register" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+                {translations.nav.register}
+              </Link>
+              <button 
+                onClick={handleLogout}
+                className="btn btn-secondary"
+                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/dashboard" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+                {translations.nav.dashboard}
+              </Link>
+              <Link to="/consultant" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+                {translations.nav.consultant}
+              </Link>
+              <Link to="/login" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+                Login
+              </Link>
+              <Link to="/register" className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+                {translations.nav.register}
+              </Link>
+            </>
+          )}
           <LanguageToggle />
         </div>
       </div>
@@ -72,18 +119,29 @@ function Navbar() {
 
 function App() {
   return (
-    <LanguageProvider>
-      <BrowserRouter>
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/register" element={<FarmRegistration />} />
-          <Route path="/consultant" element={<Chatbot />} />
-          <Route path="/education" element={<Education />} />
-        </Routes>
-      </BrowserRouter>
-    </LanguageProvider>
+    <AuthProvider>
+      <LanguageProvider>
+        <BrowserRouter>
+          <Navbar />
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<FarmRegistration />} />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/consultant" element={
+              <ProtectedRoute>
+                <Chatbot />
+              </ProtectedRoute>
+            } />
+            <Route path="/education" element={<Education />} />
+          </Routes>
+        </BrowserRouter>
+      </LanguageProvider>
+    </AuthProvider>
   );
 }
 

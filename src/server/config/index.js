@@ -22,6 +22,7 @@ const config = {
     name: process.env.DB_NAME || 'gabayani',
     user: process.env.DB_USER || 'gabayani_user',
     password: process.env.DB_PASSWORD || 'gabayani_dev_password',
+    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
   },
 
   // --- Authentication ---

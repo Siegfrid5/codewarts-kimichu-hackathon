@@ -1,27 +1,35 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export default function Dashboard() {
+  const { apiCall, user } = useAuth();
   const [farms, setFarms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // In a real app, this would fetch from GET /api/farms/my-farms
-  // We're mocking it here for the initial frontend display
   useEffect(() => {
-    setTimeout(() => {
-      setFarms([
-        {
-          id: '1',
-          name: 'Tomasino Farmer',
-          municipality: 'Manila',
-          crop: 'Rice',
-          area: 21.5,
-          weather: { temp: 28.5, humidity: 92, rain_1h: 20 },
-          risks: { bph: 'low', blast: 'low', flood: 'moderate' }
+    const fetchFarms = async () => {
+      try {
+        const response = await apiCall(`${API_BASE_URL}/api/farms/my-farms`);
+        const data = await response.json();
+        
+        if (data.success) {
+          setFarms(data.data);
+        } else {
+          setError('Failed to fetch farm data');
         }
-      ]);
-      setLoading(false);
-    }, 1000);
-  }, []);
+      } catch (err) {
+        console.error('Error fetching farms:', err);
+        setError('Failed to connect to server');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFarms();
+  }, [apiCall]);
 
   const getRiskBadge = (level) => {
     if (level === 'high') return <span className="badge badge-danger">High Risk</span>;
@@ -31,6 +39,19 @@ export default function Dashboard() {
 
   if (loading) {
     return <div className="container" style={{ textAlign: 'center', marginTop: '4rem' }}>Loading farm data...</div>;
+  }
+
+  if (error) {
+    return <div className="container" style={{ textAlign: 'center', marginTop: '4rem', color: 'var(--danger)' }}>{error}</div>;
+  }
+
+  if (farms.length === 0) {
+    return (
+      <div className="container" style={{ textAlign: 'center', marginTop: '4rem' }}>
+        <h3>No farms registered yet</h3>
+        <p className="text-muted">Register your first farm to get started.</p>
+      </div>
+    );
   }
 
   return (
