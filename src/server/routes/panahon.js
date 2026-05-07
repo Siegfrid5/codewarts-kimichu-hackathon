@@ -54,9 +54,15 @@ router.post('/', asyncHandler(async (req, res) => {
   // Acknowledge webhook immediately
   res.json({ success: true });
 
+  // Normalize phone number (convert +639 to 09)
+  let normalizedNumber = number.trim();
+  if (normalizedNumber.startsWith('+63')) {
+    normalizedNumber = '0' + normalizedNumber.slice(3);
+  }
+
   try {
     // 1. Identify User
-    const user = await User.findByPhone(number);
+    const user = await User.findByPhone(normalizedNumber);
     if (!user) {
       // User not registered.
       await SmsService.send(
@@ -86,15 +92,27 @@ router.post('/', asyncHandler(async (req, res) => {
     }
 
     const farmId = farms[0].id;
-    // Get full farm context
-    const fullFarmList = await Farm.getAllWithRiskStatus();
-    const farmContext = fullFarmList.find((f) => f.id === farmId);
+    const farm = farms[0];
+    
+    // Get full farm context (Match structure expected by TemplateEngine & Gemini)
+    const FarmRiskStatus = require('../models/FarmRiskStatus');
+    const WeatherCache = require('../models/WeatherCache');
+    const SatelliteCache = require('../models/SatelliteCache');
 
-    if (!farmContext) return;
+    const riskStatus = await FarmRiskStatus.findByFarmId(farmId);
+    const weather = await WeatherCache.findByMunicipality(farm.municipality);
+    const satellite = await SatelliteCache.findByFarmId(farmId);
+
+    const farmContext = {
+      ...farm,
+      risk_status: riskStatus || { bph_risk: 'low', blast_risk: 'low', flood_risk: 'low', gdd_accumulated: 0 },
+      weather: weather || { temp_c: 27, rain_1h_mm: 0 },
+      satellite: satellite || null,
+    };
 
     // 4. Routing: PANAHON Command vs Chatbot Query
     const command = message.trim().toUpperCase();
-    
+
     if (command.startsWith('PANAHON')) {
       // --- PANAHON Digest Flow ---
       const template = TemplateEngine.generatePanahonResponse(farmContext);
@@ -111,7 +129,7 @@ router.post('/', asyncHandler(async (req, res) => {
     } else {
       // --- AI Chatbot Flow ---
       const reply = await GeminiService.consult(message, farmContext);
-      
+
       await SmsService.send(
         number,
         reply,
