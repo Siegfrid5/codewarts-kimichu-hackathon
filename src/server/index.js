@@ -7,16 +7,26 @@
 
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const config = require('./config');
 const db = require('./db');
 const { errorHandler } = require('./middleware/errorHandler');
+const { apiLimiter } = require('./middleware/rateLimit');
 const SCTScheduler = require('./sct/scheduler');
 const authRoutes = require('./routes/auth');
 const farmRoutes = require('./routes/farms');
 const panahonRoutes = require('./routes/panahon');
 const chatbotRoutes = require('./routes/chatbot');
+const educationRoutes = require('./routes/education');
 
 const app = express();
+
+// ------------------------------------
+// Security Middleware
+// ------------------------------------
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for development
+}));
 
 // ------------------------------------
 // Middleware
@@ -66,6 +76,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/farms', farmRoutes);
 app.use('/api/panahon', panahonRoutes);
 app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/education', educationRoutes);
+
+// Apply API rate limiter to all API routes (except auth which has its own)
+app.use('/api', apiLimiter);
 
 // ------------------------------------
 // SCT Manual Triggers (development only)

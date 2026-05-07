@@ -1,90 +1,72 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import YouTubeEmbed from '../components/YouTubeEmbed';
 import { useLanguage } from '../contexts/LanguageContext';
 import { en } from '../translations/en';
 import { tl } from '../translations/tl';
 
-const educationVideos = [
-  {
-    id: 'video1',
-    videoId: 'dQw4w9WgXcQ',
-    title: 'Rice Planting Basics for Beginners',
-    description: 'Learn the fundamentals of rice planting including seed selection, soil preparation, and proper spacing techniques.',
-    duration: '12:34',
-    category: 'Basics'
-  },
-  {
-    id: 'video2',
-    videoId: 'dQw4w9WgXcQ',
-    title: 'Pest Management in Organic Farming',
-    description: 'Natural methods to control common rice pests without harmful chemicals, protecting both crops and environment.',
-    duration: '18:45',
-    category: 'Pest Control'
-  },
-  {
-    id: 'video3',
-    videoId: 'dQw4w9WgXcQ',
-    title: 'Water Management for Rice Fields',
-    description: 'Essential irrigation techniques to optimize water usage and ensure healthy crop growth throughout the season.',
-    duration: '15:20',
-    category: 'Irrigation'
-  },
-  {
-    id: 'video4',
-    videoId: 'dQw4w9WgXcQ',
-    title: 'Harvesting and Post-Harvest Handling',
-    description: 'Best practices for harvesting rice at the right time and proper storage to maintain grain quality.',
-    duration: '10:15',
-    category: 'Harvest'
-  },
-  {
-    id: 'video5',
-    videoId: 'dQw4w9WgXcQ',
-    title: 'Understanding Soil Health',
-    description: 'How to test and improve soil fertility using organic amendments and sustainable farming practices.',
-    duration: '22:10',
-    category: 'Soil Health'
-  },
-  {
-    id: 'video6',
-    videoId: 'dQw4w9WgXcQ',
-    title: 'Modern Rice Varieties Selection',
-    description: 'Choosing the right rice varieties for your region based on climate, soil type, and market demand.',
-    duration: '14:30',
-    category: 'Varieties'
-  },
-  {
-    id: 'video7',
-    videoId: 'dQw4w9WgXcQ',
-    title: 'Fertilizer Application Guide',
-    description: 'When and how to apply fertilizers for maximum yield while minimizing environmental impact.',
-    duration: '16:45',
-    category: 'Nutrients'
-  },
-  {
-    id: 'video8',
-    videoId: 'dQw4w9WgXcQ',
-    title: 'Disease Prevention in Rice Crops',
-    description: 'Identifying common rice diseases early and implementing preventive measures to protect your harvest.',
-    duration: '19:20',
-    category: 'Disease'
-  }
-];
-
-const categories = ['All', 'Basics', 'Pest Control', 'Irrigation', 'Harvest', 'Soil Health', 'Varieties', 'Nutrients', 'Disease'];
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export default function Education() {
   const { language } = useLanguage();
   const translations = language === 'en' ? en : tl;
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [videos, setVideos] = useState([]);
+  const [categories, setCategories] = useState(['All']);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const filteredVideos = educationVideos.filter(video => {
-    const matchesCategory = selectedCategory === 'All' || video.category === selectedCategory;
-    const matchesSearch = video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         video.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/education/categories`);
+        const data = await response.json();
+        if (data.success) {
+          setCategories(data.data);
+        }
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  // Fetch videos on mount or when category/search changes
+  useEffect(() => {
+    const fetchVideos = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        let url = `${API_BASE_URL}/api/education/videos`;
+        
+        if (searchQuery) {
+          url = `${API_BASE_URL}/api/education/videos/search?q=${encodeURIComponent(searchQuery)}`;
+          if (selectedCategory !== 'All') {
+            url += `&category=${encodeURIComponent(selectedCategory)}`;
+          }
+        } else if (selectedCategory !== 'All') {
+          url += `?category=${encodeURIComponent(selectedCategory)}`;
+        }
+
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.success) {
+          setVideos(data.data);
+        } else {
+          setError('Failed to fetch videos');
+        }
+      } catch (err) {
+        console.error('Error fetching videos:', err);
+        setError('Failed to connect to server');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVideos();
+  }, [selectedCategory, searchQuery]);
 
   return (
     <div style={{ minHeight: '100vh', padding: '8rem 2rem 4rem', position: 'relative', paddingTop: '8rem' }}>
@@ -164,25 +146,42 @@ export default function Education() {
           </div>
         </div>
 
-        {/* Video Grid */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', 
-          gap: '2rem' 
-        }}>
-          {filteredVideos.map((video, index) => (
-            <YouTubeEmbed
-              key={video.id}
-              videoId={video.videoId}
-              title={video.title}
-              description={video.description}
-              duration={video.duration}
-              category={video.category}
-            />
-          ))}
-        </div>
+        {/* Loading State */}
+        {loading && (
+          <div style={{ textAlign: 'center', padding: '4rem' }}>
+            <p>Loading videos...</p>
+          </div>
+        )}
 
-        {filteredVideos.length === 0 && (
+        {/* Error State */}
+        {error && (
+          <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--danger)' }}>
+            <p>{error}</p>
+          </div>
+        )}
+
+        {/* Video Grid */}
+        {!loading && !error && (
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', 
+            gap: '2rem' 
+          }}>
+            {videos.map((video) => (
+              <YouTubeEmbed
+                key={video.id}
+                videoId={video.video_id}
+                title={video.title}
+                description={video.description}
+                duration={video.duration}
+                category={video.category}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* No Results */}
+        {!loading && !error && videos.length === 0 && (
           <div style={{ 
             textAlign: 'center', 
             padding: '4rem',

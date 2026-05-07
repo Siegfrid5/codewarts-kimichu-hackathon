@@ -13,6 +13,12 @@ const DIALECTS = ['tagalog', 'ilocano', 'cebuano', 'hiligaynon'];
 const TIERS = ['freemium', 'subscribed'];
 
 /**
+ * Password strength validation.
+ * Requires: min 8 chars, at least 1 uppercase, 1 lowercase, 1 number, 1 special char
+ */
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+/**
  * Farm registration schema.
  * Validates web form submission including polygon GeoJSON.
  */
@@ -45,6 +51,7 @@ const farmRegistrationSchema = Joi.object({
 
 /**
  * User registration schema.
+ * Updated to support username and optional email.
  */
 const userRegistrationSchema = Joi.object({
   name: Joi.string().min(2).max(255).required(),
@@ -54,15 +61,48 @@ const userRegistrationSchema = Joi.object({
     .messages({
       'string.pattern.base': 'Phone must be a valid PH mobile (09XXXXXXXXX)',
     }),
-  password: Joi.string().min(8).max(128).required(),
+  username: Joi.string()
+    .min(3)
+    .max(30)
+    .pattern(/^[a-zA-Z0-9_]+$/)
+    .allow('')
+    .optional()
+    .messages({
+      'string.pattern.base': 'Username must contain only letters, numbers, and underscores',
+    }),
+  email: Joi.string()
+    .email()
+    .allow('')
+    .optional()
+    .messages({
+      'string.email': 'Please provide a valid email address',
+    }),
+  password: Joi.string()
+    .pattern(passwordPattern)
+    .required()
+    .messages({
+      'string.pattern.base': 'Password must be at least 8 characters with uppercase, lowercase, number, and special character',
+    }),
 });
 
 /**
  * Login schema.
+ * Updated to accept username, email, or phone.
  */
 const loginSchema = Joi.object({
-  phone: Joi.string().required(),
+  identifier: Joi.string()
+    .required()
+    .messages({
+      'string.empty': 'Please enter your username, email, or phone number',
+    }),
   password: Joi.string().required(),
+});
+
+/**
+ * Refresh token schema.
+ */
+const refreshTokenSchema = Joi.object({
+  refreshToken: Joi.string().required(),
 });
 
 /**
@@ -88,6 +128,7 @@ module.exports = {
   farmRegistrationSchema,
   userRegistrationSchema,
   loginSchema,
+  refreshTokenSchema,
   panahonRequestSchema,
   validate,
   CROPS,
