@@ -22,6 +22,19 @@ function getAI() {
   return genAI;
 }
 
+function stripMarkdown(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+    .replace(/\*(.*?)\*/g, '$1')     // Remove italic
+    .replace(/__(.*?)__/g, '$1')     // Remove underline
+    .replace(/_(.*?)_/g, '$1')       // Remove italic
+    .replace(/~~(.*?)~~/g, '$1')     // Remove strikethrough
+    .replace(/`([^`]+)`/g, '$1')     // Remove inline code
+    .replace(/#+\s/g, '')            // Remove headers
+    .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Replace links with text
+    .trim();
+}
+
 const GeminiService = {
   /**
    * Translate an English SMS template into a localized, agronomic dialect.
@@ -51,6 +64,7 @@ const GeminiService = {
         Translate the following English SMS alert into natural, conversational ${dialect}.
         It is for a rice farmer. Keep it concise, actionable, and under 160 characters if possible.
         Retain the "[GABAYANI]" prefix.
+        IMPORTANT: Return PLAIN TEXT ONLY. DO NOT use markdown, bold text, or asterisks.
         
         Message to translate:
         "${englishTemplate}"
@@ -58,11 +72,11 @@ const GeminiService = {
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      return response.text().trim();
+      return stripMarkdown(response.text());
     } catch (err) {
       console.error('❌ [Gemini] Translation failed:', err.message);
       // Fallback to English on error so the alert still goes out
-      return englishTemplate;
+      return stripMarkdown(englishTemplate);
     }
   },
 
@@ -88,7 +102,8 @@ const GeminiService = {
         You are 'Gabayani', an AI agricultural consultant for Filipino rice farmers.
         Be respectful, practical, and highly knowledgeable about tropical rice farming (PhilRice/IRRI standards).
         Respond in the farmer's dialect: ${farmContext.dialect || 'tagalog'}.
-        Keep responses concise but informative. Use bullet points when listing recommendations.
+        Keep responses concise but informative. Use simple lists instead of deep markdown.
+        IMPORTANT: Return PLAIN TEXT ONLY. DO NOT use markdown formatting, bold text, or asterisks (*). Do not use hashtags (#). This will be sent directly via SMS.
         
         ═══════════════════════════════
         CURRENT FARM DATA (LIVE):
@@ -136,7 +151,7 @@ const GeminiService = {
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      return response.text().trim();
+      return stripMarkdown(response.text());
     } catch (err) {
       console.error('❌ [Gemini] Chatbot failed:', err.message);
       throw new Error(err.message || 'Chatbot unavailable');

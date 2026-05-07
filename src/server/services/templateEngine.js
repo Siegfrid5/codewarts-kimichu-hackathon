@@ -68,7 +68,7 @@ Because of the wind direction, your farm is at risk of spread. Please scout your
 ${farm.farmer_name}, here is the current status for your farm in ${farm.barangay}:
 Temp: ${farm.weather.temp_c}°C
 Rain (1h): ${farm.weather.rain_1h_mm}mm
-GDD: ${farm.risk_status.gdd_accumulated.toFixed(1)}
+GDD: ${Number(farm.risk_status.gdd_accumulated || 0).toFixed(1)}
 Risks: BPH(${farm.risk_status.bph_risk}), Blast(${farm.risk_status.blast_risk}), Flood(${farm.risk_status.flood_risk}).
 Text a question if you need advice!`;
   },
