@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, ArrowRight, ArrowLeft, AlertTriangle, WifiOff, ShieldAlert, Clock } from 'lucide-react';
+import { CheckCircle, ArrowRight, ArrowLeft, Leaf, AlertTriangle } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Polygon } from '@react-google-maps/api';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 import { en } from '../translations/en';
 import { tl } from '../translations/tl';
 
@@ -14,10 +15,11 @@ export default function FarmRegistration() {
   const translations = language === 'en' ? en : tl;
   
   const navigate = useNavigate();
+  const { setAuthFromTokens } = useAuth();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [submitError, setSubmitError] = useState(null); // { message, type, details }
+  const [submitError, setSubmitError] = useState(null);
   const [formData, setFormData] = useState({
     farmer_name: '',
     phone: '',
@@ -136,7 +138,7 @@ export default function FarmRegistration() {
   const handleNext = () => {
     if (currentStep.type === 'map') {
       if (areaHectares === 0) {
-        setSubmitError({ message: 'Please complete your farm boundary before proceeding.', type: 'validation' });
+        setSubmitError('Please complete your farm boundary before proceeding.');
         return;
       }
       handleSubmit();
@@ -173,7 +175,7 @@ export default function FarmRegistration() {
 
   const finishPolygon = () => {
     if (polygonCoords.length < 3) {
-      setSubmitError({ message: 'A polygon must have at least 3 points.', type: 'validation' });
+      setSubmitError('A polygon must have at least 3 points.');
       return;
     }
     
@@ -203,72 +205,17 @@ export default function FarmRegistration() {
   };
 
   /**
-   * Safely parse a fetch response as JSON.
-   * Returns { data, error } — handles non-JSON responses (e.g. 502 from proxy).
+   * Extract a human-readable error message from the server's error payload.
+   * The server may return error as a string, or as { message, details }.
    */
-  const safeJsonParse = async (response) => {
-    const text = await response.text();
-    try {
-      return { data: JSON.parse(text), error: null };
-    } catch {
-      return {
-        data: null,
-        error: `Unexpected server response (HTTP ${response.status}). Please try again later.`
-      };
+  const extractErrorMessage = (errorPayload, fallback = 'Something went wrong') => {
+    if (!errorPayload) return fallback;
+    if (typeof errorPayload === 'string') return errorPayload;
+    if (errorPayload.details && Array.isArray(errorPayload.details)) {
+      return errorPayload.details.join(', ');
     }
-  };
-
-  /**
-   * Maps an HTTP status code + server error payload into a user-friendly
-   * { message, type, details } object for inline display.
-   */
-  const parseServerError = (status, errorPayload, fallbackMessage) => {
-    // Extract message from various error shapes the server may return
-    const serverMessage = typeof errorPayload === 'string'
-      ? errorPayload
-      : errorPayload?.details
-        ? errorPayload.details.join(', ')
-        : errorPayload?.message || fallbackMessage;
-
-    switch (status) {
-      case 409:
-        return {
-          message: serverMessage,
-          type: 'conflict',
-          details: 'An account with this information already exists. Please go back and use different credentials, or try logging in instead.'
-        };
-      case 429:
-        return {
-          message: 'Too many attempts. Please wait a few minutes before trying again.',
-          type: 'rate_limit',
-          details: null
-        };
-      case 423:
-        return {
-          message: serverMessage,
-          type: 'locked',
-          details: 'Your account has been temporarily locked for security. Please try again later.'
-        };
-      case 400:
-        return {
-          message: serverMessage,
-          type: 'validation',
-          details: 'Please go back and correct the highlighted fields.'
-        };
-      default:
-        if (status >= 500) {
-          return {
-            message: 'Our servers are experiencing issues. Please try again in a few minutes.',
-            type: 'server',
-            details: null
-          };
-        }
-        return {
-          message: serverMessage,
-          type: 'unknown',
-          details: null
-        };
-    }
+    if (errorPayload.message) return errorPayload.message;
+    return fallback;
   };
 
   const handleSubmit = async () => {
@@ -276,21 +223,15 @@ export default function FarmRegistration() {
     setSubmitError(null);
     
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-    const TIMEOUT_MS = 30000; // 30-second timeout
-    
     let registerData = null;
-    
-    try {
-      // ─── Step 1: Register the user account ───
-      const registerController = new AbortController();
-      const registerTimeout = setTimeout(() => registerController.abort(), TIMEOUT_MS);
 
+    try {
+      // ── Step 1: Register the user account ──
       let registerResponse;
       try {
         registerResponse = await fetch(`${API_BASE_URL}/api/auth/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          signal: registerController.signal,
           body: JSON.stringify({
             name: formData.farmer_name,
             phone: formData.phone,
@@ -299,27 +240,25 @@ export default function FarmRegistration() {
             password: formData.password,
           }),
         });
-      } catch (fetchErr) {
-        if (fetchErr.name === 'AbortError') {
-          throw { type: 'timeout', message: 'The request timed out. Please check your internet connection and try again.' };
-        }
-        throw { type: 'network', message: 'Unable to connect to the server. Please check your internet connection and try again.' };
-      } finally {
-        clearTimeout(registerTimeout);
+      } catch (networkErr) {
+        throw new Error('Unable to connect to the server. Please check your internet connection and try again.');
       }
 
-      const registerParsed = await safeJsonParse(registerResponse);
-      if (registerParsed.error) {
-        throw { type: 'server', message: registerParsed.error };
-      }
-      registerData = registerParsed.data;
-
-      if (!registerData.success) {
-        const parsed = parseServerError(registerResponse.status, registerData.error, 'Account registration failed');
-        throw parsed;
+      // Handle non-JSON responses (e.g. 502 from proxy)
+      let registerJson;
+      try {
+        registerJson = await registerResponse.json();
+      } catch {
+        throw new Error(`Server returned an unexpected response (HTTP ${registerResponse.status}). Please try again later.`);
       }
 
-      // ─── Step 2: Register the farm ───
+      if (!registerJson.success) {
+        throw new Error(extractErrorMessage(registerJson.error, 'Account registration failed'));
+      }
+
+      registerData = registerJson;
+
+      // ── Step 2: Register the farm ──
       const geoJsonCoords = polygonCoords.map(p => [p.lng, p.lat]);
       geoJsonCoords.push([...geoJsonCoords[0]]);
 
@@ -339,9 +278,6 @@ export default function FarmRegistration() {
         }
       };
 
-      const farmController = new AbortController();
-      const farmTimeout = setTimeout(() => farmController.abort(), TIMEOUT_MS);
-
       let farmResponse;
       try {
         farmResponse = await fetch(`${API_BASE_URL}/api/farms/register`, {
@@ -350,110 +286,106 @@ export default function FarmRegistration() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${registerData.data.accessToken}`
           },
-          signal: farmController.signal,
           body: JSON.stringify(farmPayload),
         });
-      } catch (fetchErr) {
-        // User account was created but farm registration failed at network level.
-        // Save tokens so the user can register their farm later from the dashboard.
-        localStorage.setItem('accessToken', registerData.data.accessToken);
-        localStorage.setItem('refreshToken', registerData.data.refreshToken);
-        localStorage.setItem('user', JSON.stringify(registerData.data.user));
-
-        if (fetchErr.name === 'AbortError') {
-          throw {
-            type: 'partial',
-            message: 'Your account was created, but farm registration timed out.',
-            details: 'You have been logged in. You can register your farm from the dashboard.'
-          };
-        }
-        throw {
-          type: 'partial',
-          message: 'Your account was created, but we could not register your farm due to a network issue.',
-          details: 'You have been logged in. You can register your farm from the dashboard.'
-        };
-      } finally {
-        clearTimeout(farmTimeout);
+      } catch (networkErr) {
+        // User was created but farm request failed at network level — save auth state
+        setAuthFromTokens({
+          accessToken: registerData.data.accessToken,
+          refreshToken: registerData.data.refreshToken,
+          user: registerData.data.user,
+        });
+        throw new Error('Your account was created, but farm registration failed due to a network error. You can add your farm from the dashboard.');
       }
 
-      const farmParsed = await safeJsonParse(farmResponse);
-      if (farmParsed.error) {
-        // User was created, farm endpoint returned non-JSON
-        localStorage.setItem('accessToken', registerData.data.accessToken);
-        localStorage.setItem('refreshToken', registerData.data.refreshToken);
-        localStorage.setItem('user', JSON.stringify(registerData.data.user));
-        throw {
-          type: 'partial',
-          message: 'Your account was created, but farm registration encountered a server error.',
-          details: 'You have been logged in. You can register your farm from the dashboard.'
-        };
+      // Handle non-JSON responses
+      let farmJson;
+      try {
+        farmJson = await farmResponse.json();
+      } catch {
+        setAuthFromTokens({
+          accessToken: registerData.data.accessToken,
+          refreshToken: registerData.data.refreshToken,
+          user: registerData.data.user,
+        });
+        throw new Error(`Your account was created, but farm registration returned an unexpected response (HTTP ${farmResponse.status}).`);
+      }
+      
+      if (!farmJson.success) {
+        // User was created but farm failed — save auth state so user isn't stuck
+        setAuthFromTokens({
+          accessToken: registerData.data.accessToken,
+          refreshToken: registerData.data.refreshToken,
+          user: registerData.data.user,
+        });
+        const farmErrMsg = extractErrorMessage(farmJson.error, 'Farm registration failed');
+        throw new Error(`Your account was created, but farm registration failed: ${farmErrMsg}`);
       }
 
-      const farmData = farmParsed.data;
-      if (!farmData.success) {
-        // User was created, but farm validation/creation failed
-        localStorage.setItem('accessToken', registerData.data.accessToken);
-        localStorage.setItem('refreshToken', registerData.data.refreshToken);
-        localStorage.setItem('user', JSON.stringify(registerData.data.user));
-
-        const farmError = parseServerError(farmResponse.status, farmData.error, 'Farm registration failed');
-        throw {
-          type: 'partial',
-          message: `Your account was created, but farm registration failed: ${farmError.message}`,
-          details: 'You have been logged in. You can register your farm from the dashboard.'
-        };
-      }
-
-      // ─── Success: both account and farm registered ───
-      localStorage.setItem('accessToken', registerData.data.accessToken);
-      localStorage.setItem('refreshToken', registerData.data.refreshToken);
-      localStorage.setItem('user', JSON.stringify(registerData.data.user));
+      // ── Both steps succeeded — update auth context and advance ──
+      setAuthFromTokens({
+        accessToken: registerData.data.accessToken,
+        refreshToken: registerData.data.refreshToken,
+        user: registerData.data.user,
+      });
 
       setCurrentStepIndex(steps.length); // Success step
     } catch (err) {
       console.error('Registration error:', err);
-
-      // Handle partial success (user created, farm failed) — offer redirect
-      if (err.type === 'partial') {
-        setSubmitError({
-          message: err.message,
-          type: 'partial',
-          details: err.details
-        });
-        return;
-      }
-
-      // Handle structured errors from parseServerError
-      if (err.type && err.message) {
-        setSubmitError({
-          message: err.message,
-          type: err.type,
-          details: err.details || null
-        });
-        return;
-      }
-
-      // Handle generic Error instances
-      setSubmitError({
-        message: err.message || 'Registration failed. Please try again.',
-        type: 'unknown',
-        details: null
-      });
+      setSubmitError(err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  // ─── Success screen ───
   if (currentStepIndex >= steps.length) {
     return (
-      <div className="container animate-fade-in" style={{ maxWidth: '600px', paddingTop: '6rem' }}>
-        <div className="glass-panel" style={{ padding: '4rem 3rem', textAlign: 'center' }}>
-          <CheckCircle size={80} color="var(--accent-primary)" style={{ margin: '0 auto 2rem auto' }} />
-          <h2 style={{ marginBottom: '1rem' }}>{translations.registration.success.title}</h2>
-          <p className="text-muted" style={{ marginBottom: '2rem' }}>
+      <div style={{
+        minHeight: 'calc(100vh - 64px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '48px 24px',
+        background: 'var(--surface-1)'
+      }}>
+        <div style={{
+          maxWidth: '520px',
+          width: '100%',
+          background: 'var(--canvas)',
+          borderRadius: 'var(--rounded-xl)',
+          padding: '64px 40px',
+          textAlign: 'center',
+          boxShadow: 'var(--shadow-float)',
+          border: '1px solid var(--hairline)',
+          animation: 'scaleIn 0.4s ease'
+        }}>
+          <div style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: 'var(--rounded-full)',
+            background: 'var(--primary-light)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 24px'
+          }}>
+            <CheckCircle size={40} color="var(--primary)" />
+          </div>
+          <h2 style={{ marginBottom: '12px', fontSize: '30px' }}>{translations.registration.success.title}</h2>
+          <p style={{ 
+            color: 'var(--ink-muted)', 
+            marginBottom: '32px',
+            fontSize: '16px',
+            lineHeight: 1.6 
+          }}>
             {translations.registration.success.description}
           </p>
-          <button className="btn btn-primary" onClick={() => navigate('/dashboard')} style={{ width: '100%' }}>
+          <button className="btn btn-primary" onClick={() => navigate('/dashboard')} style={{ 
+            width: '100%',
+            padding: '16px',
+            fontSize: '16px'
+          }}>
             {translations.registration.success.goToDashboard}
           </button>
         </div>
@@ -461,165 +393,181 @@ export default function FarmRegistration() {
     );
   }
 
+  // ─── Registration flow ───
   return (
-    <div className="container animate-fade-in" style={{ maxWidth: currentStep.type === 'map' ? '1200px' : '600px', paddingTop: '6rem' }}>
-      <div className="glass-panel" style={{ padding: currentStep.type === 'map' ? '2rem' : '4rem 3rem' }}>
-        {/* Progress indicator */}
-        <div style={{ marginBottom: '2rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+    <div style={{
+      minHeight: 'calc(100vh - 64px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '48px 24px',
+      background: 'var(--surface-1)'
+    }}>
+      <div style={{ 
+        maxWidth: currentStep.type === 'map' ? '1100px' : '560px',
+        width: '100%',
+        background: 'var(--canvas)',
+        borderRadius: 'var(--rounded-xl)',
+        padding: currentStep.type === 'map' ? '32px' : '48px 40px',
+        boxShadow: 'var(--shadow-float)',
+        border: '1px solid var(--hairline)',
+        animation: 'fadeIn 0.3s ease',
+        transition: 'max-width 0.35s ease'
+      }}>
+        {/* Progress indicator — Ani green gradient */}
+        <div style={{ marginBottom: '32px' }}>
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
             {steps.map((_, index) => (
               <div
                 key={index}
                 style={{
                   flex: 1,
-                  height: '2px',
-                  background: index <= currentStepIndex ? 'var(--accent-primary)' : 'var(--border-glass)',
-                  transition: 'background 0.3s ease'
+                  height: '4px',
+                  borderRadius: 'var(--rounded-pill)',
+                  background: index <= currentStepIndex ? 'var(--primary)' : 'var(--hairline)',
+                  transition: 'all 0.4s ease'
                 }}
               />
             ))}
           </div>
-          <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+          <div style={{ 
+            fontSize: '13px', 
+            color: 'var(--ink-subtle)',
+            fontWeight: 500,
+            letterSpacing: '0.3px'
+          }}>
             {translations.registration.common.step} {currentStepIndex + 1} {translations.registration.common.of} {steps.length}
           </div>
         </div>
 
-        {/* Error banner for submission / validation errors */}
+        {/* Inline error banner */}
         {submitError && (
           <div
             id="registration-error-banner"
             style={{
-              marginBottom: '1.5rem',
-              padding: '1rem 1.25rem',
-              borderRadius: '12px',
-              background: submitError.type === 'partial'
-                ? 'rgba(245, 158, 11, 0.12)'
-                : 'rgba(220, 38, 38, 0.1)',
-              border: `1px solid ${submitError.type === 'partial'
-                ? 'rgba(245, 158, 11, 0.35)'
-                : 'rgba(220, 38, 38, 0.3)'}`,
+              marginBottom: '24px',
+              padding: '16px 20px',
+              borderRadius: 'var(--rounded-xl)',
+              background: 'rgba(220, 38, 38, 0.08)',
+              border: '1px solid rgba(220, 38, 38, 0.25)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
               animation: 'fadeIn 0.3s ease',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-              <div style={{ flexShrink: 0, marginTop: '2px' }}>
-                {submitError.type === 'network' && <WifiOff size={20} color="#f87171" />}
-                {submitError.type === 'timeout' && <Clock size={20} color="#f87171" />}
-                {submitError.type === 'conflict' && <ShieldAlert size={20} color="#f87171" />}
-                {submitError.type === 'rate_limit' && <Clock size={20} color="#f87171" />}
-                {submitError.type === 'partial' && <AlertTriangle size={20} color="#f59e0b" />}
-                {!['network', 'timeout', 'conflict', 'rate_limit', 'partial'].includes(submitError.type) && (
-                  <AlertTriangle size={20} color="#f87171" />
-                )}
+            <AlertTriangle size={20} color="#ef4444" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <div style={{ flex: 1 }}>
+              <div style={{
+                color: '#ef4444',
+                fontWeight: 600,
+                fontSize: '14px',
+                lineHeight: 1.5,
+                marginBottom: submitError.includes('account was created') ? '8px' : 0,
+              }}>
+                {submitError}
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  fontWeight: 600,
-                  color: submitError.type === 'partial' ? '#fbbf24' : '#f87171',
-                  marginBottom: submitError.details ? '0.35rem' : 0,
-                  fontSize: '0.9rem',
-                  lineHeight: 1.4,
-                }}>
-                  {submitError.message}
-                </div>
-                {submitError.details && (
-                  <div style={{
-                    color: submitError.type === 'partial' ? 'rgba(251,191,36,0.8)' : 'rgba(248,113,113,0.8)',
-                    fontSize: '0.8rem',
-                    lineHeight: 1.4,
-                  }}>
-                    {submitError.details}
-                  </div>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setSubmitError(null)}
-                aria-label="Dismiss error"
-                style={{
-                  flexShrink: 0,
-                  background: 'transparent',
-                  border: 'none',
-                  color: submitError.type === 'partial' ? '#fbbf24' : '#f87171',
-                  cursor: 'pointer',
-                  fontSize: '1.25rem',
-                  lineHeight: 1,
-                  padding: '0 0.25rem',
-                }}
-              >
-                ×
-              </button>
+              {submitError.includes('account was created') && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard')}
+                  style={{
+                    background: 'rgba(220, 38, 38, 0.1)',
+                    border: '1px solid rgba(220, 38, 38, 0.25)',
+                    color: '#ef4444',
+                    padding: '8px 16px',
+                    borderRadius: 'var(--rounded-pill)',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = 'rgba(220, 38, 38, 0.18)'}
+                  onMouseLeave={(e) => e.target.style.background = 'rgba(220, 38, 38, 0.1)'}
+                >
+                  Go to Dashboard →
+                </button>
+              )}
             </div>
-            {submitError.type === 'partial' && (
-              <button
-                type="button"
-                onClick={() => navigate('/dashboard')}
-                style={{
-                  marginTop: '0.75rem',
-                  width: '100%',
-                  padding: '0.6rem',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(245, 158, 11, 0.4)',
-                  background: 'rgba(245, 158, 11, 0.15)',
-                  color: '#fbbf24',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => e.target.style.background = 'rgba(245, 158, 11, 0.25)'}
-                onMouseLeave={(e) => e.target.style.background = 'rgba(245, 158, 11, 0.15)'}
-              >
-                Go to Dashboard →
-              </button>
-            )}
-            {submitError.type === 'conflict' && (
-              <button
-                type="button"
-                onClick={() => navigate('/login')}
-                style={{
-                  marginTop: '0.75rem',
-                  width: '100%',
-                  padding: '0.6rem',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(220, 38, 38, 0.3)',
-                  background: 'rgba(220, 38, 38, 0.1)',
-                  color: '#f87171',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => e.target.style.background = 'rgba(220, 38, 38, 0.2)'}
-                onMouseLeave={(e) => e.target.style.background = 'rgba(220, 38, 38, 0.1)'}
-              >
-                Login Instead →
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setSubmitError(null)}
+              aria-label="Dismiss error"
+              style={{
+                flexShrink: 0,
+                background: 'transparent',
+                border: 'none',
+                color: '#ef4444',
+                cursor: 'pointer',
+                fontSize: '18px',
+                lineHeight: 1,
+                padding: '0 4px',
+              }}
+            >
+              ×
+            </button>
           </div>
         )}
 
         {currentStep.type === 'map' ? (
           <div>
-            <h2 style={{ marginBottom: '0.5rem' }}>{currentStep.title}</h2>
-            <p className="text-muted" style={{ marginBottom: '1.5rem' }}>{currentStep.question}</p>
+            <h2 style={{ marginBottom: '8px', fontSize: '30px', letterSpacing: '-0.3px' }}>{currentStep.title}</h2>
+            <p style={{ color: 'var(--ink-muted)', marginBottom: '24px', fontSize: '16px' }}>{currentStep.question}</p>
             
-            <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+            <div style={{ 
+              marginBottom: '16px', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center' 
+            }}>
+              <span style={{ 
+                fontSize: '14px', 
+                color: 'var(--ink-subtle)',
+                fontWeight: 500 
+              }}>
                 {areaHectares === 0 ? translations.registration.steps.map.instruction : translations.registration.steps.map.completed}
               </span>
               {areaHectares > 0 && (
-                <div style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.875rem' }}>
+                <div className="badge badge-safe" style={{ 
+                  padding: '8px 16px', 
+                  fontWeight: 700, 
+                  fontSize: '14px' 
+                }}>
                   {areaHectares.toFixed(2)} hectares
                 </div>
               )}
             </div>
 
-            <div style={{ height: '500px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-glass)', marginBottom: '1.5rem' }}>
+            {/* Map container per DESIGN.md */}
+            <div style={{ 
+              height: '450px', 
+              width: '100%', 
+              borderRadius: 'var(--rounded-xl)', 
+              overflow: 'hidden', 
+              boxShadow: 'var(--shadow-float)',
+              background: 'var(--surface-1)',
+              marginBottom: '24px' 
+            }}>
               {loadError ? (
-                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--danger)' }}>Error loading maps. Check console/API key.</div>
+                <div style={{ 
+                  padding: '32px', 
+                  textAlign: 'center', 
+                  color: 'var(--semantic-error)',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>Error loading maps. Check console/API key.</div>
               ) : !isLoaded ? (
-                <div style={{ padding: '2rem', textAlign: 'center' }}>Loading Google Maps...</div>
+                <div style={{ 
+                  padding: '32px', 
+                  textAlign: 'center',
+                  color: 'var(--ink-muted)',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>Loading Google Maps...</div>
               ) : (
                 <GoogleMap
                   mapContainerStyle={{ width: '100%', height: '100%' }}
@@ -634,10 +582,10 @@ export default function FarmRegistration() {
                     <Polygon
                       path={polygonCoords}
                       options={{
-                        fillColor: '#10b981',
+                        fillColor: '#2B7A3D',
                         fillOpacity: 0.4,
                         strokeWeight: 2,
-                        strokeColor: '#059669',
+                        strokeColor: '#1B5E2B',
                         clickable: false
                       }}
                     />
@@ -646,45 +594,33 @@ export default function FarmRegistration() {
               )}
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* Map action buttons */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <button 
                 type="button" 
                 onClick={handleBack}
+                className="btn btn-ghost"
                 style={{
-                  background: 'transparent',
-                  border: '1px solid var(--border-glass)',
-                  color: 'var(--text-primary)',
-                  padding: '0.75rem 1.5rem',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
+                  padding: '12px 20px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.5rem',
-                  transition: 'all 0.2s ease'
+                  gap: '8px'
                 }}
-                onMouseEnter={(e) => e.target.style.background = 'var(--border-glass)'}
-                onMouseLeave={(e) => e.target.style.background = 'transparent'}
               >
                 <ArrowLeft size={18} />
                 {translations.registration.common.back}
               </button>
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button 
                   type="button" 
                   onClick={clearPolygon}
                   disabled={polygonCoords.length === 0}
+                  className="btn btn-secondary"
                   style={{
-                    background: polygonCoords.length === 0 ? 'var(--border-glass)' : 'transparent',
-                    border: '1px solid var(--border-glass)',
-                    color: 'var(--text-primary)',
-                    padding: '0.75rem 1.5rem',
-                    borderRadius: '8px',
-                    cursor: polygonCoords.length === 0 ? 'not-allowed' : 'pointer',
+                    padding: '12px 20px',
                     opacity: polygonCoords.length === 0 ? 0.5 : 1,
-                    transition: 'all 0.2s ease'
+                    cursor: polygonCoords.length === 0 ? 'not-allowed' : 'pointer'
                   }}
-                  onMouseEnter={(e) => { if (polygonCoords.length > 0) e.target.style.background = 'var(--border-glass)'; }}
-                  onMouseLeave={(e) => e.target.style.background = 'transparent'}
                 >
                   {translations.registration.steps.map.clear}
                 </button>
@@ -692,17 +628,8 @@ export default function FarmRegistration() {
                   <button 
                     type="button" 
                     onClick={finishPolygon}
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid var(--accent-primary)',
-                      color: 'var(--accent-primary)',
-                      padding: '0.75rem 1.5rem',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => e.target.style.background = 'rgba(16, 185, 129, 0.1)'}
-                    onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                    className="btn btn-secondary"
+                    style={{ padding: '12px 20px' }}
                   >
                     {translations.registration.steps.map.finish}
                   </button>
@@ -711,22 +638,15 @@ export default function FarmRegistration() {
                   type="button" 
                   onClick={handleNext}
                   disabled={loading || areaHectares === 0}
+                  className="btn btn-primary"
                   style={{
-                    background: loading || areaHectares === 0 ? 'var(--border-glass)' : 'var(--accent-primary)',
-                    border: 'none',
-                    color: loading || areaHectares === 0 ? 'var(--text-secondary)' : 'white',
-                    padding: '0.75rem 2rem',
-                    borderRadius: '8px',
-                    cursor: loading || areaHectares === 0 ? 'not-allowed' : 'pointer',
+                    padding: '12px 24px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem',
+                    gap: '8px',
                     opacity: loading || areaHectares === 0 ? 0.5 : 1,
-                    transition: 'all 0.2s ease',
-                    transform: 'scale(1)'
+                    cursor: loading || areaHectares === 0 ? 'not-allowed' : 'pointer'
                   }}
-                  onMouseEnter={(e) => { if (!loading && areaHectares > 0) e.target.style.transform = 'scale(1.02)'; }}
-                  onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
                 >
                   {loading ? translations.registration.steps.map.processing : translations.registration.steps.map.complete}
                   {!loading && <ArrowRight size={18} />}
@@ -736,11 +656,21 @@ export default function FarmRegistration() {
           </div>
         ) : (
           <div>
-            <h2 style={{ marginBottom: '0.5rem', fontSize: '1.75rem' }}>{currentStep.title}</h2>
-            <p className="text-muted" style={{ marginBottom: '2rem', fontSize: '1.125rem' }}>{currentStep.question}</p>
+            <h2 style={{ 
+              marginBottom: '8px', 
+              fontSize: '30px',
+              fontWeight: 700,
+              letterSpacing: '-0.3px'
+            }}>{currentStep.title}</h2>
+            <p style={{ 
+              color: 'var(--ink-muted)', 
+              marginBottom: '32px', 
+              fontSize: '16px',
+              lineHeight: 1.6
+            }}>{currentStep.question}</p>
             
             {currentStep.type === 'select' ? (
-              <div style={{ marginBottom: '2rem' }}>
+              <div style={{ marginBottom: '32px' }}>
                 {currentStep.options.map((option) => {
                   const optionLabels = {
                     tagalog: language === 'en' ? 'Tagalog' : 'Tagalog',
@@ -748,6 +678,7 @@ export default function FarmRegistration() {
                     cebuano: language === 'en' ? 'Cebuano' : 'Cebuano',
                     english: language === 'en' ? 'English' : 'English'
                   };
+                  const isSelected = formData[currentStep.field] === option;
                   return (
                     <button
                       key={option}
@@ -758,27 +689,30 @@ export default function FarmRegistration() {
                       }}
                       style={{
                         width: '100%',
-                        padding: '1rem',
-                        marginBottom: '0.75rem',
-                        background: formData[currentStep.field] === option ? 'var(--accent-primary)' : 'transparent',
-                        border: formData[currentStep.field] === option ? 'var(--accent-primary)' : '1px solid var(--border-glass)',
-                        color: formData[currentStep.field] === option ? 'white' : 'var(--text-primary)',
-                        borderRadius: '8px',
+                        padding: '16px 20px',
+                        marginBottom: '10px',
+                        background: isSelected ? 'var(--primary)' : 'var(--surface-1)',
+                        border: isSelected ? '2px solid var(--primary)' : '2px solid var(--hairline)',
+                        color: isSelected ? 'var(--on-primary)' : 'var(--ink)',
+                        borderRadius: 'var(--rounded-md)',
                         cursor: 'pointer',
                         textAlign: 'left',
-                        transition: 'all 0.2s ease',
-                        transform: 'scale(1)'
+                        fontSize: '16px',
+                        fontWeight: 500,
+                        fontFamily: 'Plus Jakarta Sans, sans-serif',
+                        transition: 'all 0.25s ease',
+                        minHeight: '48px'
                       }}
                       onMouseEnter={(e) => { 
-                        if (formData[currentStep.field] !== option) {
-                          e.target.style.background = 'var(--border-glass)';
-                          e.target.style.transform = 'scale(1.01)';
+                        if (!isSelected) {
+                          e.currentTarget.style.borderColor = 'var(--primary)';
+                          e.currentTarget.style.background = 'var(--primary-pale)';
                         }
                       }}
                       onMouseLeave={(e) => {
-                        if (formData[currentStep.field] !== option) {
-                          e.target.style.background = 'transparent';
-                          e.target.style.transform = 'scale(1)';
+                        if (!isSelected) {
+                          e.currentTarget.style.borderColor = 'var(--hairline)';
+                          e.currentTarget.style.background = 'var(--surface-1)';
                         }
                       }}
                     >
@@ -788,7 +722,7 @@ export default function FarmRegistration() {
                 })}
               </div>
             ) : (
-              <div style={{ marginBottom: '2rem' }}>
+              <div style={{ marginBottom: '32px' }}>
                 <input
                   ref={inputRef}
                   type={currentStep.type}
@@ -799,26 +733,32 @@ export default function FarmRegistration() {
                   placeholder={currentStep.placeholder}
                   style={{
                     width: '100%',
-                    padding: '1rem 0',
-                    fontSize: '1.5rem',
+                    padding: '16px 0',
+                    fontSize: '24px',
+                    fontWeight: 600,
                     background: 'transparent',
                     border: 'none',
-                    borderBottom: error ? '2px solid var(--danger)' : '2px solid var(--accent-primary)',
-                    color: 'var(--text-primary)',
+                    borderBottom: error 
+                      ? '3px solid var(--semantic-error)' 
+                      : '3px solid var(--primary)',
+                    color: 'var(--ink)',
                     outline: 'none',
-                    transition: 'border-color 0.2s ease'
+                    transition: 'border-color 0.25s ease',
+                    fontFamily: 'Plus Jakarta Sans, sans-serif',
+                    letterSpacing: '-0.3px'
                   }}
-                  onFocus={(e) => e.target.style.borderColor = error ? 'var(--danger)' : 'var(--accent-primary)'}
-                  onBlur={(e) => e.target.style.borderColor = error ? 'var(--danger)' : 'var(--border-glass)'}
+                  onFocus={(e) => e.target.style.borderColor = error ? 'var(--semantic-error)' : 'var(--primary)'}
+                  onBlur={(e) => e.target.style.borderColor = error ? 'var(--semantic-error)' : 'var(--hairline)'}
                 />
                 {error && (
                   <div style={{
-                    marginTop: '0.5rem',
-                    fontSize: '0.875rem',
-                    color: 'var(--danger)',
+                    marginTop: '10px',
+                    fontSize: '14px',
+                    color: 'var(--semantic-error)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem'
+                    gap: '6px',
+                    fontWeight: 500
                   }}>
                     <span>⚠️</span>
                     <span>{error}</span>
@@ -827,25 +767,19 @@ export default function FarmRegistration() {
               </div>
             )}
             
+            {/* Navigation buttons */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               {currentStepIndex > 0 ? (
                 <button 
                   type="button" 
                   onClick={handleBack}
+                  className="btn btn-ghost"
                   style={{
-                    background: 'transparent',
-                    border: '1px solid var(--border-glass)',
-                    color: 'var(--text-primary)',
-                    padding: '0.75rem 1.5rem',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
+                    padding: '12px 20px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem',
-                    transition: 'all 0.2s ease'
+                    gap: '8px'
                   }}
-                  onMouseEnter={(e) => e.target.style.background = 'var(--border-glass)'}
-                  onMouseLeave={(e) => e.target.style.background = 'transparent'}
                 >
                   <ArrowLeft size={18} />
                   {translations.registration.common.back}
@@ -855,28 +789,27 @@ export default function FarmRegistration() {
               )}
               
               {currentStep.type !== 'select' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{translations.registration.common.pressEnter}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <span style={{ 
+                    fontSize: '13px', 
+                    color: 'var(--ink-subtle)',
+                    fontWeight: 500 
+                  }}>
+                    {translations.registration.common.pressEnter}
+                  </span>
                   <button 
                     type="button"
                     onClick={handleNext}
                     disabled={!formData[currentStep.field]}
+                    className="btn btn-primary"
                     style={{
-                      background: !formData[currentStep.field] ? 'var(--border-glass)' : 'var(--accent-primary)',
-                      border: 'none',
-                      color: !formData[currentStep.field] ? 'var(--text-secondary)' : 'white',
-                      padding: '0.75rem 2rem',
-                      borderRadius: '8px',
-                      cursor: !formData[currentStep.field] ? 'not-allowed' : 'pointer',
+                      padding: '12px 28px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '0.5rem',
+                      gap: '8px',
                       opacity: !formData[currentStep.field] ? 0.5 : 1,
-                      transition: 'all 0.2s ease',
-                      transform: 'scale(1)'
+                      cursor: !formData[currentStep.field] ? 'not-allowed' : 'pointer'
                     }}
-                    onMouseEnter={(e) => { if (formData[currentStep.field]) e.target.style.transform = 'scale(1.02)'; }}
-                    onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
                   >
                     {translations.registration.common.ok}
                     <ArrowRight size={18} />
