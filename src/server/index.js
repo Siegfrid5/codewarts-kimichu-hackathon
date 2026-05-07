@@ -102,18 +102,22 @@ app.use(errorHandler);
 // ------------------------------------
 const PORT = config.port;
 
-app.listen(PORT, () => {
-  console.log(`
-  ┌─────────────────────────────────────────┐
-  │  🌾 GABAYANI Server                     │
-  │  Running on http://localhost:${PORT}        │
-  │  Environment: ${config.nodeEnv.padEnd(20)}  │
-  │  Database: ${config.db.name}@${config.db.host}:${config.db.port}  │
-  └─────────────────────────────────────────┘
-  `);
+if (require.main === module || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`
+    ┌─────────────────────────────────────────┐
+    │  🌾 GABAYANI Server                     │
+    │  Running on http://localhost:${PORT}        │
+    │  Environment: ${config.nodeEnv.padEnd(20)}  │
+    │  Database: ${config.db.name}@${config.db.host}:${config.db.port}  │
+    └─────────────────────────────────────────┘
+    `);
 
-  // Start SCT scheduler after server is listening
-  SCTScheduler.start();
-});
+    // Start SCT scheduler after server is listening
+    if (!process.env.VERCEL) {
+      SCTScheduler.start();
+    }
+  });
+}
 
 module.exports = app;

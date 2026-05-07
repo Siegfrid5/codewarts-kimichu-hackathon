@@ -16,11 +16,12 @@ const config = {
 
   // --- Database ---
   db: {
+    connectionString: process.env.DATABASE_URL || null,
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT, 10) || 5432,
     name: process.env.DB_NAME || 'gabayani',
     user: process.env.DB_USER || 'gabayani_user',
-    password: process.env.DB_PASSWORD || '',
+    password: process.env.DB_PASSWORD || 'gabayani_dev_password',
   },
 
   // --- Authentication ---

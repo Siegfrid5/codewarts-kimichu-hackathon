@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
-import { GoogleMap, useJsApiLoader, DrawingManager, Polygon } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Polygon } from '@react-google-maps/api';
 
 const libraries = ['geometry'];
 const defaultCenter = { lat: 15.4829, lng: 120.9735 }; // Central Luzon area
@@ -25,7 +25,6 @@ export default function FarmRegistration() {
   const [centroid, setCentroid] = useState(null);
   
   const mapRef = useRef(null);
-  const polygonRef = useRef(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,

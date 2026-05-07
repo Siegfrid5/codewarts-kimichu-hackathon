@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Send, Bot, User } from 'lucide-react';
 
 export default function Chatbot() {

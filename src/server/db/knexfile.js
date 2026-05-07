@@ -1,53 +1,47 @@
-/**
- * GABAYANI — Knex Configuration
- * 
- * Defines database connection settings for all environments.
- * Used by Knex CLI for migrations and by the application at runtime.
- */
-
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+const config = require('../config');
+
+// Shared connection logic to handle local vs Supabase (DATABASE_URL)
+const getConnection = () => {
+  if (config.db.connectionString) {
+    // If using Supabase / production URL, SSL is required
+    return {
+      connectionString: config.db.connectionString,
+      ssl: { rejectUnauthorized: false }
+    };
+  }
+  
+  // Local development
+  return {
+    host: config.db.host,
+    port: config.db.port,
+    user: config.db.user,
+    password: config.db.password,
+    database: config.db.name,
+  };
+};
 
 module.exports = {
   development: {
     client: 'pg',
-    connection: {
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT, 10) || 5432,
-      database: process.env.DB_NAME || 'gabayani',
-      user: process.env.DB_USER || 'gabayani_user',
-      password: process.env.DB_PASSWORD || '',
-    },
-    pool: {
-      min: 2,
-      max: 10,
-    },
+    connection: getConnection(),
     migrations: {
-      directory: path.resolve(__dirname, 'migrations'),
-      tableName: 'knex_migrations',
+      directory: path.join(__dirname, 'migrations')
     },
     seeds: {
-      directory: path.resolve(__dirname, 'seeds'),
-    },
+      directory: path.join(__dirname, 'seeds')
+    }
   },
 
   production: {
     client: 'pg',
-    connection: {
-      host: process.env.DB_HOST,
-      port: parseInt(process.env.DB_PORT, 10) || 5432,
-      database: process.env.DB_NAME,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      ssl: { rejectUnauthorized: false },
-    },
+    connection: getConnection(),
     pool: {
       min: 2,
-      max: 20,
+      max: 10
     },
     migrations: {
-      directory: path.resolve(__dirname, 'migrations'),
-      tableName: 'knex_migrations',
-    },
-  },
+      directory: path.join(__dirname, 'migrations')
+    }
+  }
 };

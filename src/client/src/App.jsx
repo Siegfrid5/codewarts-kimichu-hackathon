@@ -1,6 +1,5 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import { Sprout, Activity, LayoutDashboard, MessageSquare } from 'lucide-react';
+import { Sprout, LayoutDashboard, MessageSquare } from 'lucide-react';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import FarmRegistration from './pages/FarmRegistration';
