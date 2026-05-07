@@ -1,13 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { GoogleMap, useJsApiLoader, Polygon } from '@react-google-maps/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const libraries = ['geometry'];
+const defaultCenter = { lat: 15.4829, lng: 120.9735 }; // Central Luzon area
 
 export default function Dashboard() {
   const { apiCall, user } = useAuth();
   const [farms, setFarms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries,
+  });
 
   useEffect(() => {
     const fetchFarms = async () => {
@@ -67,6 +75,46 @@ export default function Dashboard() {
         </button>
       </div>
 
+      <div style={{ height: '400px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-glass)', marginBottom: '2rem' }}>
+        {loadError ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--danger)' }}>Error loading maps. Check console or API key.</div>
+        ) : !isLoaded ? (
+          <div style={{ padding: '2rem', textAlign: 'center' }}>Loading Satellite Map...</div>
+        ) : (
+          <GoogleMap
+            mapContainerStyle={{ width: '100%', height: '100%' }}
+            center={farms.length > 0 && farms[0].centroid_lat ? { lat: parseFloat(farms[0].centroid_lat), lng: parseFloat(farms[0].centroid_lng) } : defaultCenter}
+            zoom={farms.length > 0 ? 15 : 10}
+            mapTypeId="satellite"
+            options={{ disableDefaultUI: true, zoomControl: true, mapTypeId: 'satellite' }}
+          >
+            {farms.map((farm) => {
+              if (!farm.polygon_geojson || !farm.polygon_geojson.coordinates || !farm.polygon_geojson.coordinates[0]) return null;
+              
+              // GeoJSON coordinates are [lng, lat], Google Maps expects {lat, lng}
+              const paths = farm.polygon_geojson.coordinates[0].map(coord => ({
+                lat: coord[1],
+                lng: coord[0]
+              }));
+              
+              return (
+                <Polygon
+                  key={farm.id}
+                  path={paths}
+                  options={{
+                    fillColor: '#10b981',
+                    fillOpacity: 0.4,
+                    strokeWeight: 2,
+                    strokeColor: '#059669',
+                    clickable: false
+                  }}
+                />
+              );
+            })}
+          </GoogleMap>
+        )}
+      </div>
+
       {farms.map((farm) => (
         <div key={farm.id} className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-glass)', paddingBottom: '1.5rem', marginBottom: '1.5rem' }}>
@@ -88,15 +136,15 @@ export default function Dashboard() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
             <div className="glass-card" style={{ padding: '1.5rem' }}>
               <h4 className="text-muted">Temperature</h4>
-              <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{farm.weather?.temp || '--'}°C</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{farm.weather?.temp_c ?? '--'}°C</p>
             </div>
             <div className="glass-card" style={{ padding: '1.5rem' }}>
               <h4 className="text-muted">Humidity</h4>
-              <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{farm.weather?.humidity || '--'}%</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{farm.weather?.humidity_pct ?? '--'}%</p>
             </div>
             <div className="glass-card" style={{ padding: '1.5rem' }}>
               <h4 className="text-muted">Rain (1hr)</h4>
-              <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{farm.weather?.rain_1h || '--'} mm</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{farm.weather?.rain_1h_mm ?? '--'} mm</p>
             </div>
           </div>
 

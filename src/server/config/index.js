@@ -40,7 +40,7 @@ const config = {
     privateKeyPath: process.env.GEE_PRIVATE_KEY_PATH || '',
   },
   googleMaps: {
-    apiKey: process.env.GOOGLE_MAPS_API_KEY || '',
+    apiKey: process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || '',
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY || '',

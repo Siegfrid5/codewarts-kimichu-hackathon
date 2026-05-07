@@ -69,7 +69,7 @@ router.post('/register', requireAuth, asyncHandler(async (req, res) => {
       // 2. Fetch SRTM DEM Data
       const demData = await GeeService.getDemData(farm.centroid_lat, farm.centroid_lng);
       await Farm.updateDemData(farm.id, demData.elevation_m, demData.slope_deg);
-      await DemCache.createOrReturn(farm.centroid_lat, farm.centroid_lng, demData.elevation_m, demData.slope_deg);
+      await DemCache.upsert({ lat: farm.centroid_lat, lng: farm.centroid_lng, elevation_m: demData.elevation_m, slope_deg: demData.slope_deg });
       console.log(`  ✅ [Bootstrap] DEM data fetched: ${demData.elevation_m.toFixed(1)}m elevation, ${demData.slope_deg.toFixed(1)}° slope`);
 
       // 3. Fetch Satellite Data
