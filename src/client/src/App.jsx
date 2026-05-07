@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
-import { Sprout, LayoutDashboard, MessageSquare, BookOpen } from 'lucide-react';
+import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
+import { Sprout, LayoutDashboard, MessageSquare, BookOpen, Menu, X, Leaf } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
@@ -18,7 +18,27 @@ function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    return <div className="container" style={{ textAlign: 'center', marginTop: '4rem' }}>Loading...</div>;
+    return (
+      <div className="container" style={{ 
+        textAlign: 'center', 
+        marginTop: '8rem',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '1rem'
+      }}>
+        <div style={{
+          width: '48px',
+          height: '48px',
+          border: '4px solid var(--primary-light)',
+          borderTopColor: 'var(--primary)',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite'
+        }} />
+        <p style={{ color: 'var(--ink-muted)', fontWeight: 500 }}>Loading...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
@@ -33,6 +53,8 @@ function Navbar() {
   const { isAuthenticated, user, logout } = useAuth();
   const translations = language === 'en' ? en : tl;
   const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -42,78 +64,338 @@ function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
   const handleLogout = async () => {
     await logout();
   };
 
+  const isActive = (path) => location.pathname === path;
+
+  const navLinkStyle = (path) => ({
+    textDecoration: 'none',
+    padding: '10px 20px',
+    borderRadius: 'var(--rounded-pill)',
+    fontSize: '14px',
+    fontWeight: isActive(path) ? 600 : 500,
+    color: isActive(path) ? 'var(--on-primary)' : 'var(--ink)',
+    background: isActive(path) ? 'var(--primary)' : 'transparent',
+    transition: 'all 0.25s ease',
+    whiteSpace: 'nowrap',
+    minHeight: '40px',
+    display: 'inline-flex',
+    alignItems: 'center'
+  });
+
   return (
-    <nav 
-      style={{
-        position: 'fixed',
-        top: '1.5rem',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 1000,
-        padding: '0.75rem 1.5rem',
-        borderRadius: '9999px',
-        background: scrolled 
-          ? 'rgba(255, 255, 255, 0.95)' 
-          : 'rgba(255, 255, 255, 0.85)',
-        backdropFilter: scrolled ? 'blur(20px)' : 'blur(12px)',
-        border: '1px solid var(--border-glass)',
-        boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.08)',
-        transition: 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '2rem' }}>
-        <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <h2 style={{ margin: 0, fontWeight: 700, letterSpacing: '0.05em', fontSize: '1.25rem', color: 'var(--accent-primary)' }}>
-            GABAYANI
-          </h2>
-        </Link>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <Link to="/education" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
-            Education
+    <>
+      <nav
+        id="top-nav"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1000,
+          height: '64px',
+          padding: '0 var(--space-xl)',
+          background: scrolled
+            ? 'rgba(255, 255, 255, 0.97)'
+            : 'var(--canvas)',
+          backdropFilter: scrolled ? 'blur(12px)' : 'none',
+          borderBottom: `1px solid ${scrolled ? 'var(--hairline)' : 'transparent'}`,
+          boxShadow: scrolled ? '0 1px 0 var(--hairline)' : 'none',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          width: '100%',
+          maxWidth: '1200px',
+          margin: '0 auto'
+        }}>
+          {/* Logo */}
+          <Link to="/" style={{
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px'
+          }}>
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: 'var(--rounded-full)',
+              background: 'var(--primary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Leaf size={20} color="white" />
+            </div>
+            <span style={{
+              fontWeight: 800,
+              fontSize: '20px',
+              letterSpacing: '-0.3px',
+              color: 'var(--primary)',
+            }}>
+              GaBayAni
+            </span>
           </Link>
-          {isAuthenticated ? (
-            <>
-              <Link to="/dashboard" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
-                {translations.nav.dashboard}
-              </Link>
-              <Link to="/consultant" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
-                {translations.nav.consultant}
-              </Link>
-              <Link to="/register" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
-                {translations.nav.register}
-              </Link>
-              <button 
-                onClick={handleLogout}
-                className="btn btn-secondary"
-                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/dashboard" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
-                {translations.nav.dashboard}
-              </Link>
-              <Link to="/consultant" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
-                {translations.nav.consultant}
-              </Link>
-              <Link to="/login" className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
-                Login
-              </Link>
-              <Link to="/register" className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
-                {translations.nav.register}
-              </Link>
-            </>
-          )}
-          <LanguageToggle />
+
+          {/* Desktop nav links */}
+          <div style={{
+            display: 'flex',
+            gap: '4px',
+            alignItems: 'center',
+          }}
+            className="nav-links-desktop"
+          >
+            <Link to="/education" style={navLinkStyle('/education')}>
+              Education
+            </Link>
+            <Link to="/dashboard" style={navLinkStyle('/dashboard')}>
+              {translations.nav.dashboard}
+            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link to="/consultant" style={navLinkStyle('/consultant')}>
+                  {translations.nav.consultant}
+                </Link>
+                <Link to="/register" style={navLinkStyle('/register')}>
+                  {translations.nav.register}
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    ...navLinkStyle(''),
+                    cursor: 'pointer',
+                    border: 'none',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/consultant" style={navLinkStyle('/consultant')}>
+                  {translations.nav.consultant}
+                </Link>
+                <Link to="/login" style={navLinkStyle('/login')}>
+                  Login
+                </Link>
+                <Link to="/register" className="btn btn-primary" style={{
+                  padding: '10px 24px',
+                  fontSize: '14px',
+                  minHeight: '40px'
+                }}>
+                  {translations.nav.register}
+                </Link>
+              </>
+            )}
+            <LanguageToggle />
+          </div>
+
+          {/* Mobile hamburger */}
+          <button
+            className="mobile-menu-btn"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            style={{
+              display: 'none',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '8px',
+              color: 'var(--ink)',
+            }}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
+      </nav>
+
+      {/* Mobile drawer */}
+      {mobileOpen && (
+        <div
+          className="mobile-nav-overlay"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            top: '64px',
+            zIndex: 999,
+            background: 'rgba(27, 52, 33, 0.5)',
+            animation: 'fadeIn 0.2s ease'
+          }}
+          onClick={() => setMobileOpen(false)}
+        >
+          <div
+            style={{
+              background: 'var(--canvas)',
+              padding: 'var(--space-lg)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              borderBottom: '1px solid var(--hairline)',
+              boxShadow: 'var(--shadow-overlay)',
+              animation: 'slideUp 0.25s ease'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Link to="/education" style={{ ...navLinkStyle('/education'), width: '100%', justifyContent: 'flex-start' }}>
+              Education
+            </Link>
+            <Link to="/dashboard" style={{ ...navLinkStyle('/dashboard'), width: '100%', justifyContent: 'flex-start' }}>
+              {translations.nav.dashboard}
+            </Link>
+            <Link to="/consultant" style={{ ...navLinkStyle('/consultant'), width: '100%', justifyContent: 'flex-start' }}>
+              {translations.nav.consultant}
+            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link to="/register" style={{ ...navLinkStyle('/register'), width: '100%', justifyContent: 'flex-start' }}>
+                  {translations.nav.register}
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    ...navLinkStyle(''),
+                    width: '100%',
+                    justifyContent: 'flex-start',
+                    cursor: 'pointer',
+                    border: 'none',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" style={{ ...navLinkStyle('/login'), width: '100%', justifyContent: 'flex-start' }}>
+                  Login
+                </Link>
+                <Link to="/register" className="btn btn-primary" style={{
+                  width: '100%',
+                  marginTop: '8px'
+                }}>
+                  {translations.nav.register}
+                </Link>
+              </>
+            )}
+            <div style={{ marginTop: '8px' }}>
+              <LanguageToggle />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile responsive styles */}
+      <style>{`
+        @media (max-width: 768px) {
+          .nav-links-desktop { display: none !important; }
+          .mobile-menu-btn { display: flex !important; }
+        }
+      `}</style>
+    </>
+  );
+}
+
+function Footer() {
+  return (
+    <footer style={{
+      background: 'var(--inverse-canvas)',
+      color: 'var(--inverse-ink-muted)',
+      padding: '64px 32px 32px',
+      marginTop: 'var(--space-section)'
+    }}>
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: 'var(--space-xl)'
+      }}>
+        {/* Brand */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: 'var(--space-md)' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: 'var(--rounded-full)',
+              background: 'var(--primary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Leaf size={18} color="white" />
+            </div>
+            <span style={{ color: 'var(--inverse-ink)', fontWeight: 800, fontSize: '18px' }}>
+              GaBayAni
+            </span>
+          </div>
+          <p style={{ fontSize: '14px', lineHeight: 1.6, opacity: 0.7 }}>
+            Guided Agricultural Bulletin and Advisory for Yield and Nutrition Intelligence.
+          </p>
+        </div>
+
+        {/* Data Sources */}
+        <div>
+          <h4 style={{ color: 'var(--inverse-ink)', fontSize: '14px', fontWeight: 700, letterSpacing: '0.5px', marginBottom: 'var(--space-md)', textTransform: 'uppercase' }}>
+            Data Sources
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px' }}>
+            <span>PAGASA Weather</span>
+            <span>Department of Agriculture</span>
+            <span>OpenWeather API</span>
+          </div>
+        </div>
+
+        {/* Platform */}
+        <div>
+          <h4 style={{ color: 'var(--inverse-ink)', fontSize: '14px', fontWeight: 700, letterSpacing: '0.5px', marginBottom: 'var(--space-md)', textTransform: 'uppercase' }}>
+            Platform
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px' }}>
+            <Link to="/dashboard" style={{ color: 'var(--inverse-ink-muted)', textDecoration: 'none' }}>Dashboard</Link>
+            <Link to="/education" style={{ color: 'var(--inverse-ink-muted)', textDecoration: 'none' }}>Education</Link>
+            <Link to="/consultant" style={{ color: 'var(--inverse-ink-muted)', textDecoration: 'none' }}>AI Consultant</Link>
+            <Link to="/register" style={{ color: 'var(--inverse-ink-muted)', textDecoration: 'none' }}>Register Farm</Link>
+          </div>
+        </div>
+
+        {/* About */}
+        <div>
+          <h4 style={{ color: 'var(--inverse-ink)', fontSize: '14px', fontWeight: 700, letterSpacing: '0.5px', marginBottom: 'var(--space-md)', textTransform: 'uppercase' }}>
+            About
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px' }}>
+            <span>Codewarts Hackathon</span>
+            <span>Team Kimichu</span>
+          </div>
         </div>
       </div>
-    </nav>
+
+      {/* Bottom bar */}
+      <div style={{
+        marginTop: 'var(--space-xxl)',
+        paddingTop: 'var(--space-lg)',
+        borderTop: '1px solid var(--inverse-surface-1)',
+        textAlign: 'center',
+        fontSize: '13px',
+        opacity: 0.6
+      }}>
+        © 2026 GaBayAni — Built for Filipino Farmers 🌾
+      </div>
+    </footer>
   );
 }
 
@@ -123,22 +405,25 @@ function App() {
       <LanguageProvider>
         <BrowserRouter>
           <Navbar />
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<FarmRegistration />} />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/consultant" element={
-              <ProtectedRoute>
-                <Chatbot />
-              </ProtectedRoute>
-            } />
-            <Route path="/education" element={<Education />} />
-          </Routes>
+          <main style={{ paddingTop: '64px' }}>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<FarmRegistration />} />
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/consultant" element={
+                <ProtectedRoute>
+                  <Chatbot />
+                </ProtectedRoute>
+              } />
+              <Route path="/education" element={<Education />} />
+            </Routes>
+          </main>
+          <Footer />
         </BrowserRouter>
       </LanguageProvider>
     </AuthProvider>

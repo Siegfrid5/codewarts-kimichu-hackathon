@@ -1,207 +1,512 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+/* ============================================================
+   GaBayAni Design System — "Ani" (Harvest)
+   Based on DESIGN.md: Ecosia-inspired organic agricultural dashboard
+   ============================================================ */
 
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* ─── Design Tokens ─── */
 :root {
-  /* GABAYANI Light Green Theme */
-  --bg-primary: #ffffff; /* White */
-  --bg-secondary: #f8fafc; /* Light gray */
-  --bg-glass: rgba(255, 255, 255, 0.8);
-  
-  --accent-primary: #10b981; /* Emerald 500 */
-  --accent-primary-hover: #059669; /* Emerald 600 */
-  --accent-secondary: #3b82f6; /* Blue 500 */
-  
-  --text-primary: #1e293b; /* Slate 800 */
-  --text-secondary: #64748b; /* Slate 500 */
-  
-  --border-glass: rgba(0, 0, 0, 0.08);
-  --border-glow: rgba(16, 185, 129, 0.2);
-  
-  --danger: #ef4444; /* Red 500 */
-  --warning: #f59e0b; /* Amber 500 */
-  --safe: #10b981; /* Emerald 500 */
-  
-  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
-  --shadow-subtle: 0 4px 12px 0 rgba(0, 0, 0, 0.05);
-  --radius-lg: 16px;
-  --radius-md: 12px;
-  --radius-sm: 8px;
+  /* Colors — The Philippine farming-day palette */
+  --primary:           #2B7A3D;
+  --primary-dark:      #1B5E2B;
+  --primary-light:     #D4EDDA;
+  --primary-pale:      #EFF8F1;
+  --on-primary:        #FFFFFF;
+
+  --accent:            #F5A623;
+  --accent-dark:       #D48E0F;
+  --accent-light:      #FFF3D6;
+  --on-accent:         #3D2E00;
+
+  --ink:               #1A1A1A;
+  --ink-muted:         #4A5548;
+  --ink-subtle:        #7C8A7E;
+
+  --canvas:            #FFFFFF;
+  --surface-1:         #F7FAF7;
+  --surface-2:         #EDF2ED;
+  --surface-warm:      #FFFBF0;
+
+  --inverse-canvas:    #1B3421;
+  --inverse-surface-1: #24432E;
+  --inverse-ink:       #FFFFFF;
+  --inverse-ink-muted: #A8C5B0;
+
+  --hairline:          #D6E4D9;
+  --hairline-strong:   #2B7A3D;
+
+  --earth:             #5C4033;
+  --earth-light:       #8B7355;
+
+  --sky:               #E8F4FD;
+  --sky-accent:        #3498DB;
+
+  --semantic-success:  #27AE60;
+  --semantic-warning:  #F5A623;
+  --semantic-error:    #E74C3C;
+  --semantic-info:     #3498DB;
+
+  /* Border radius — organic, soft, Ecosia-friendly */
+  --rounded-none:  0px;
+  --rounded-xs:    4px;
+  --rounded-sm:    8px;
+  --rounded-md:    12px;
+  --rounded-lg:    16px;
+  --rounded-xl:    24px;
+  --rounded-pill:  9999px;
+  --rounded-full:  9999px;
+
+  /* Spacing */
+  --space-xxs:  4px;
+  --space-xs:   8px;
+  --space-sm:   12px;
+  --space-md:   16px;
+  --space-lg:   24px;
+  --space-xl:   32px;
+  --space-xxl:  48px;
+  --space-xxxl: 64px;
+  --space-section: 96px;
+
+  /* Elevation */
+  --shadow-whisper: 0 2px 12px rgba(0,0,0,0.06);
+  --shadow-float:   0 4px 24px rgba(43,122,61,0.08);
+  --shadow-lift:    0 8px 32px rgba(43,122,61,0.20);
+  --shadow-overlay: 0 16px 48px rgba(0,0,0,0.16);
+
+  /* Legacy variable mapping (backward compat with existing components) */
+  --bg-primary: var(--canvas);
+  --bg-secondary: var(--surface-1);
+  --accent-primary: var(--primary);
+  --accent-primary-hover: var(--primary-dark);
+  --accent-secondary: var(--sky-accent);
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-muted);
+  --border-glass: var(--hairline);
+  --border-glow: rgba(43,122,61,0.25);
+  --danger: var(--semantic-error);
+  --warning: var(--semantic-warning);
+  --safe: var(--semantic-success);
+  --shadow-glass: var(--shadow-float);
+  --shadow-subtle: var(--shadow-whisper);
+  --radius-lg: var(--rounded-lg);
+  --radius-md: var(--rounded-md);
+  --radius-sm: var(--rounded-sm);
 }
 
-* {
+/* ─── Reset ─── */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+/* ─── Base Body ─── */
 body {
-  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  background-color: var(--bg-primary);
-  background-attachment: fixed;
-  color: var(--text-primary);
-  line-height: 1.5;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--canvas);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0.1px;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
 }
 
-/* Glassmorphism Utilities */
-.glass-panel {
-  background: var(--bg-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-glass);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-glass);
+/* ─── Typography ─── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--ink);
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+}
+
+h1 {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+}
+
+h2 {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.3px;
+}
+
+h3 {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.30;
+  letter-spacing: -0.2px;
+}
+
+h4 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.40;
+}
+
+.text-gradient {
+  color: var(--primary);
+  display: inline-block;
+}
+
+.text-muted {
+  color: var(--ink-muted);
+}
+
+.text-subtle {
+  color: var(--ink-subtle);
+}
+
+/* Eyebrow */
+.eyebrow {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.30;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+/* Stat Number — the Ecosia counter pattern */
+.stat-number {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 56px;
+  font-weight: 800;
+  line-height: 1.0;
+  letter-spacing: -1px;
+}
+
+.stat-label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.30;
+  letter-spacing: 0.5px;
+  color: var(--ink-muted);
+}
+
+/* ─── Cards — Ecosia-style floating panels ─── */
+.glass-panel,
+.data-card {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-lg);
+  box-shadow: var(--shadow-whisper);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--border-glass);
-  border-radius: var(--radius-md);
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-lg);
+  box-shadow: var(--shadow-whisper);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-card:hover {
   transform: translateY(-4px);
-  border-color: var(--border-glow);
-  box-shadow: 0 10px 25px -5px var(--shadow-subtle);
+  box-shadow: var(--shadow-float);
+  border-color: var(--primary-light);
 }
 
-/* Typography */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 600;
-  line-height: 1.2;
-  margin-bottom: 0.5rem;
+.feature-card {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-xl);
+  padding: 32px;
+  box-shadow: var(--shadow-float);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-h1 { font-size: 2.5rem; }
-h2 { font-size: 2rem; }
-h3 { font-size: 1.5rem; }
-
-.text-gradient {
-  color: var(--accent-primary);
-  display: inline-block;
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lift);
 }
 
-.text-muted {
-  color: var(--text-secondary);
+.feature-card-green {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-radius: var(--rounded-xl);
+  padding: 32px;
 }
 
-/* Buttons */
+.stat-card {
+  background: var(--canvas);
+  border-radius: var(--rounded-xl);
+  padding: 32px;
+  box-shadow: var(--shadow-float);
+}
+
+.stat-card-hero {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-radius: var(--rounded-xl);
+  padding: 40px;
+  box-shadow: var(--shadow-lift);
+}
+
+.stat-card-warning {
+  background: var(--accent-light);
+  color: var(--earth);
+  border-radius: var(--rounded-xl);
+  padding: 32px;
+}
+
+/* ─── Buttons — Pill-shaped, the brand's interactive signature ─── */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--radius-sm);
-  font-family: inherit;
-  font-weight: 500;
-  font-size: 1rem;
+  padding: 14px 28px;
+  border-radius: var(--rounded-pill);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.25;
+  letter-spacing: 0.2px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
   text-decoration: none;
+  min-height: 48px;
 }
 
 .btn-primary {
-  background: var(--accent-primary);
-  color: white;
-  box-shadow: 0 4px 14px 0 var(--border-glow);
+  background: var(--primary);
+  color: var(--on-primary);
+  box-shadow: 0 4px 14px rgba(43,122,61,0.20);
 }
 
 .btn-primary:hover {
+  background: var(--primary-dark);
   transform: translateY(-2px);
-  background: var(--accent-primary-hover);
-  box-shadow: 0 6px 20px 0 rgba(16, 185, 129, 0.3);
+  box-shadow: 0 6px 20px rgba(43,122,61,0.30);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  background: var(--hairline);
+  color: var(--ink-subtle);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .btn-secondary {
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--text-primary);
-  border: 1px solid var(--border-glass);
+  background: var(--canvas);
+  color: var(--primary);
+  border: 2px solid var(--primary);
 }
 
 .btn-secondary:hover {
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--primary-pale);
   transform: translateY(-2px);
 }
 
-/* Forms */
+.btn-accent {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.btn-accent:hover {
+  background: var(--accent-dark);
+  transform: translateY(-2px);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--primary);
+  padding: 14px 20px;
+}
+
+.btn-ghost:hover {
+  background: var(--primary-pale);
+}
+
+.btn-danger {
+  background: var(--semantic-error);
+  color: var(--on-primary);
+}
+
+.btn-danger:hover {
+  background: #C0392B;
+  transform: translateY(-2px);
+}
+
+/* ─── Forms — Pale green fill, organic corners ─── */
 .form-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-lg);
 }
 
 .form-label {
   display: block;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--text-secondary);
+  margin-bottom: var(--space-xs);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.50;
+  letter-spacing: 0.1px;
+  color: var(--ink-muted);
 }
 
 .form-input {
   width: 100%;
-  padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid var(--border-glass);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 1rem;
-  transition: all 0.2s ease;
+  padding: 14px 16px;
+  background: var(--surface-1);
+  border: 2px solid transparent;
+  border-radius: var(--rounded-md);
+  color: var(--ink);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 16px;
+  line-height: 1.60;
+  transition: all 0.25s ease;
+  min-height: 48px;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 2px var(--border-glow);
+  background: var(--canvas);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(43,122,61,0.12);
 }
 
-/* Layout */
+.form-input::placeholder {
+  color: var(--ink-subtle);
+}
+
+/* ─── Layout ─── */
 .container {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 1.5rem;
+  padding: 0 var(--space-lg);
 }
 
-/* Animations */
+/* ─── Badges — Pill-shaped status indicators ─── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: var(--rounded-pill);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  line-height: 1.40;
+  border: none;
+}
+
+.badge-safe {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+}
+
+.badge-warning {
+  background: var(--accent-light);
+  color: var(--accent-dark);
+}
+
+.badge-danger {
+  background: #FDECEA;
+  color: var(--semantic-error);
+}
+
+/* ─── Animations ─── */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 .animate-fade-in {
   animation: fadeIn 0.5s ease forwards;
 }
 
-/* Risk Badges */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+/* ─── Wave Divider — organic SVG section breaks ─── */
+.wave-divider {
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
 }
 
-.badge-safe {
-  background: rgba(16, 185, 129, 0.15);
-  color: #059669;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+.wave-divider svg {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
-.badge-warning {
-  background: rgba(245, 158, 11, 0.15);
-  color: #d97706;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+/* ─── Responsive Breakpoints ─── */
+@media (max-width: 768px) {
+  h1 { font-size: 30px; }
+  h2 { font-size: 24px; }
+  h3 { font-size: 20px; }
+  
+  .stat-number {
+    font-size: 40px;
+  }
+
+  .btn {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+
+  .container {
+    padding: 0 var(--space-md);
+  }
 }
 
-.badge-danger {
-  background: rgba(239, 68, 68, 0.15);
-  color: #dc2626;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+@media (max-width: 480px) {
+  h1 { font-size: 24px; }
+  
+  .stat-number {
+    font-size: 36px;
+  }
+}
+
+/* ─── Scrollbar Styling ─── */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--hairline);
+  border-radius: var(--rounded-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-subtle);
+}
+
+/* ─── Selection Color ─── */
+::selection {
+  background: var(--primary-light);
+  color: var(--primary-dark);
 }

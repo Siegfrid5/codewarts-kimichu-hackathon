@@ -11,6 +11,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const config = require('../config');
+const db = require('../db');
 const User = require('../models/User');
 const RefreshToken = require('../models/RefreshToken');
 const { validate, userRegistrationSchema, loginSchema, refreshTokenSchema } = require('../utils/validation');
