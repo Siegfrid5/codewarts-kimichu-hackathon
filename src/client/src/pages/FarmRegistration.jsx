@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react';
+import { CheckCircle, ArrowRight, ArrowLeft, AlertTriangle, WifiOff, ShieldAlert, Clock } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Polygon } from '@react-google-maps/api';
 import { useLanguage } from '../contexts/LanguageContext';
 import { en } from '../translations/en';
@@ -17,6 +17,7 @@ export default function FarmRegistration() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [submitError, setSubmitError] = useState(null); // { message, type, details }
   const [formData, setFormData] = useState({
     farmer_name: '',
     phone: '',
@@ -135,7 +136,7 @@ export default function FarmRegistration() {
   const handleNext = () => {
     if (currentStep.type === 'map') {
       if (areaHectares === 0) {
-        alert("Please complete your farm boundary before proceeding.");
+        setSubmitError({ message: 'Please complete your farm boundary before proceeding.', type: 'validation' });
         return;
       }
       handleSubmit();
@@ -155,6 +156,7 @@ export default function FarmRegistration() {
 
   const handleBack = () => {
     if (currentStepIndex > 0) {
+      setSubmitError(null);
       setCurrentStepIndex(currentStepIndex - 1);
     }
   };
@@ -171,10 +173,11 @@ export default function FarmRegistration() {
 
   const finishPolygon = () => {
     if (polygonCoords.length < 3) {
-      alert("A polygon must have at least 3 points.");
+      setSubmitError({ message: 'A polygon must have at least 3 points.', type: 'validation' });
       return;
     }
     
+    setSubmitError(null);
     const path = polygonCoords.map(p => new window.google.maps.LatLng(p.lat, p.lng));
     const sqMeters = window.google.maps.geometry.spherical.computeArea(path);
     const hectares = sqMeters / 10000;
@@ -196,37 +199,127 @@ export default function FarmRegistration() {
     setPolygonCoords([]);
     setAreaHectares(0);
     setCentroid(null);
+    setSubmitError(null);
+  };
+
+  /**
+   * Safely parse a fetch response as JSON.
+   * Returns { data, error } — handles non-JSON responses (e.g. 502 from proxy).
+   */
+  const safeJsonParse = async (response) => {
+    const text = await response.text();
+    try {
+      return { data: JSON.parse(text), error: null };
+    } catch {
+      return {
+        data: null,
+        error: `Unexpected server response (HTTP ${response.status}). Please try again later.`
+      };
+    }
+  };
+
+  /**
+   * Maps an HTTP status code + server error payload into a user-friendly
+   * { message, type, details } object for inline display.
+   */
+  const parseServerError = (status, errorPayload, fallbackMessage) => {
+    // Extract message from various error shapes the server may return
+    const serverMessage = typeof errorPayload === 'string'
+      ? errorPayload
+      : errorPayload?.details
+        ? errorPayload.details.join(', ')
+        : errorPayload?.message || fallbackMessage;
+
+    switch (status) {
+      case 409:
+        return {
+          message: serverMessage,
+          type: 'conflict',
+          details: 'An account with this information already exists. Please go back and use different credentials, or try logging in instead.'
+        };
+      case 429:
+        return {
+          message: 'Too many attempts. Please wait a few minutes before trying again.',
+          type: 'rate_limit',
+          details: null
+        };
+      case 423:
+        return {
+          message: serverMessage,
+          type: 'locked',
+          details: 'Your account has been temporarily locked for security. Please try again later.'
+        };
+      case 400:
+        return {
+          message: serverMessage,
+          type: 'validation',
+          details: 'Please go back and correct the highlighted fields.'
+        };
+      default:
+        if (status >= 500) {
+          return {
+            message: 'Our servers are experiencing issues. Please try again in a few minutes.',
+            type: 'server',
+            details: null
+          };
+        }
+        return {
+          message: serverMessage,
+          type: 'unknown',
+          details: null
+        };
+    }
   };
 
   const handleSubmit = async () => {
     setLoading(true);
+    setSubmitError(null);
+    
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const TIMEOUT_MS = 30000; // 30-second timeout
+    
+    let registerData = null;
     
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      
-      // First, register the user
-      const registerResponse = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.farmer_name,
-          phone: formData.phone,
-          username: formData.username,
-          email: formData.email,
-          password: formData.password,
-        }),
-      });
+      // ─── Step 1: Register the user account ───
+      const registerController = new AbortController();
+      const registerTimeout = setTimeout(() => registerController.abort(), TIMEOUT_MS);
 
-      const registerData = await registerResponse.json();
-      
-      if (!registerData.success) {
-        const errorMessage = registerData.error?.details 
-          ? registerData.error.details.join(', ')
-          : registerData.error?.message || 'Registration failed';
-        throw new Error(errorMessage);
+      let registerResponse;
+      try {
+        registerResponse = await fetch(`${API_BASE_URL}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: registerController.signal,
+          body: JSON.stringify({
+            name: formData.farmer_name,
+            phone: formData.phone,
+            username: formData.username,
+            email: formData.email,
+            password: formData.password,
+          }),
+        });
+      } catch (fetchErr) {
+        if (fetchErr.name === 'AbortError') {
+          throw { type: 'timeout', message: 'The request timed out. Please check your internet connection and try again.' };
+        }
+        throw { type: 'network', message: 'Unable to connect to the server. Please check your internet connection and try again.' };
+      } finally {
+        clearTimeout(registerTimeout);
       }
 
-      // Then register the farm
+      const registerParsed = await safeJsonParse(registerResponse);
+      if (registerParsed.error) {
+        throw { type: 'server', message: registerParsed.error };
+      }
+      registerData = registerParsed.data;
+
+      if (!registerData.success) {
+        const parsed = parseServerError(registerResponse.status, registerData.error, 'Account registration failed');
+        throw parsed;
+      }
+
+      // ─── Step 2: Register the farm ───
       const geoJsonCoords = polygonCoords.map(p => [p.lng, p.lat]);
       geoJsonCoords.push([...geoJsonCoords[0]]);
 
@@ -246,30 +339,106 @@ export default function FarmRegistration() {
         }
       };
 
-      const farmResponse = await fetch(`${API_BASE_URL}/api/farms/register`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${registerData.data.accessToken}`
-        },
-        body: JSON.stringify(farmPayload),
-      });
+      const farmController = new AbortController();
+      const farmTimeout = setTimeout(() => farmController.abort(), TIMEOUT_MS);
 
-      const farmData = await farmResponse.json();
-      
-      if (!farmData.success) {
-        throw new Error(farmData.error || 'Farm registration failed');
+      let farmResponse;
+      try {
+        farmResponse = await fetch(`${API_BASE_URL}/api/farms/register`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${registerData.data.accessToken}`
+          },
+          signal: farmController.signal,
+          body: JSON.stringify(farmPayload),
+        });
+      } catch (fetchErr) {
+        // User account was created but farm registration failed at network level.
+        // Save tokens so the user can register their farm later from the dashboard.
+        localStorage.setItem('accessToken', registerData.data.accessToken);
+        localStorage.setItem('refreshToken', registerData.data.refreshToken);
+        localStorage.setItem('user', JSON.stringify(registerData.data.user));
+
+        if (fetchErr.name === 'AbortError') {
+          throw {
+            type: 'partial',
+            message: 'Your account was created, but farm registration timed out.',
+            details: 'You have been logged in. You can register your farm from the dashboard.'
+          };
+        }
+        throw {
+          type: 'partial',
+          message: 'Your account was created, but we could not register your farm due to a network issue.',
+          details: 'You have been logged in. You can register your farm from the dashboard.'
+        };
+      } finally {
+        clearTimeout(farmTimeout);
       }
 
-      // Store tokens in localStorage
+      const farmParsed = await safeJsonParse(farmResponse);
+      if (farmParsed.error) {
+        // User was created, farm endpoint returned non-JSON
+        localStorage.setItem('accessToken', registerData.data.accessToken);
+        localStorage.setItem('refreshToken', registerData.data.refreshToken);
+        localStorage.setItem('user', JSON.stringify(registerData.data.user));
+        throw {
+          type: 'partial',
+          message: 'Your account was created, but farm registration encountered a server error.',
+          details: 'You have been logged in. You can register your farm from the dashboard.'
+        };
+      }
+
+      const farmData = farmParsed.data;
+      if (!farmData.success) {
+        // User was created, but farm validation/creation failed
+        localStorage.setItem('accessToken', registerData.data.accessToken);
+        localStorage.setItem('refreshToken', registerData.data.refreshToken);
+        localStorage.setItem('user', JSON.stringify(registerData.data.user));
+
+        const farmError = parseServerError(farmResponse.status, farmData.error, 'Farm registration failed');
+        throw {
+          type: 'partial',
+          message: `Your account was created, but farm registration failed: ${farmError.message}`,
+          details: 'You have been logged in. You can register your farm from the dashboard.'
+        };
+      }
+
+      // ─── Success: both account and farm registered ───
       localStorage.setItem('accessToken', registerData.data.accessToken);
       localStorage.setItem('refreshToken', registerData.data.refreshToken);
       localStorage.setItem('user', JSON.stringify(registerData.data.user));
 
       setCurrentStepIndex(steps.length); // Success step
-    } catch (error) {
-      console.error('Registration error:', error);
-      alert(error.message || 'Registration failed. Please try again.');
+    } catch (err) {
+      console.error('Registration error:', err);
+
+      // Handle partial success (user created, farm failed) — offer redirect
+      if (err.type === 'partial') {
+        setSubmitError({
+          message: err.message,
+          type: 'partial',
+          details: err.details
+        });
+        return;
+      }
+
+      // Handle structured errors from parseServerError
+      if (err.type && err.message) {
+        setSubmitError({
+          message: err.message,
+          type: err.type,
+          details: err.details || null
+        });
+        return;
+      }
+
+      // Handle generic Error instances
+      setSubmitError({
+        message: err.message || 'Registration failed. Please try again.',
+        type: 'unknown',
+        details: null
+      });
     } finally {
       setLoading(false);
     }
@@ -314,6 +483,121 @@ export default function FarmRegistration() {
             {translations.registration.common.step} {currentStepIndex + 1} {translations.registration.common.of} {steps.length}
           </div>
         </div>
+
+        {/* Error banner for submission / validation errors */}
+        {submitError && (
+          <div
+            id="registration-error-banner"
+            style={{
+              marginBottom: '1.5rem',
+              padding: '1rem 1.25rem',
+              borderRadius: '12px',
+              background: submitError.type === 'partial'
+                ? 'rgba(245, 158, 11, 0.12)'
+                : 'rgba(220, 38, 38, 0.1)',
+              border: `1px solid ${submitError.type === 'partial'
+                ? 'rgba(245, 158, 11, 0.35)'
+                : 'rgba(220, 38, 38, 0.3)'}`,
+              animation: 'fadeIn 0.3s ease',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+              <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                {submitError.type === 'network' && <WifiOff size={20} color="#f87171" />}
+                {submitError.type === 'timeout' && <Clock size={20} color="#f87171" />}
+                {submitError.type === 'conflict' && <ShieldAlert size={20} color="#f87171" />}
+                {submitError.type === 'rate_limit' && <Clock size={20} color="#f87171" />}
+                {submitError.type === 'partial' && <AlertTriangle size={20} color="#f59e0b" />}
+                {!['network', 'timeout', 'conflict', 'rate_limit', 'partial'].includes(submitError.type) && (
+                  <AlertTriangle size={20} color="#f87171" />
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontWeight: 600,
+                  color: submitError.type === 'partial' ? '#fbbf24' : '#f87171',
+                  marginBottom: submitError.details ? '0.35rem' : 0,
+                  fontSize: '0.9rem',
+                  lineHeight: 1.4,
+                }}>
+                  {submitError.message}
+                </div>
+                {submitError.details && (
+                  <div style={{
+                    color: submitError.type === 'partial' ? 'rgba(251,191,36,0.8)' : 'rgba(248,113,113,0.8)',
+                    fontSize: '0.8rem',
+                    lineHeight: 1.4,
+                  }}>
+                    {submitError.details}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSubmitError(null)}
+                aria-label="Dismiss error"
+                style={{
+                  flexShrink: 0,
+                  background: 'transparent',
+                  border: 'none',
+                  color: submitError.type === 'partial' ? '#fbbf24' : '#f87171',
+                  cursor: 'pointer',
+                  fontSize: '1.25rem',
+                  lineHeight: 1,
+                  padding: '0 0.25rem',
+                }}
+              >
+                ×
+              </button>
+            </div>
+            {submitError.type === 'partial' && (
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                style={{
+                  marginTop: '0.75rem',
+                  width: '100%',
+                  padding: '0.6rem',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  color: '#fbbf24',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => e.target.style.background = 'rgba(245, 158, 11, 0.25)'}
+                onMouseLeave={(e) => e.target.style.background = 'rgba(245, 158, 11, 0.15)'}
+              >
+                Go to Dashboard →
+              </button>
+            )}
+            {submitError.type === 'conflict' && (
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                style={{
+                  marginTop: '0.75rem',
+                  width: '100%',
+                  padding: '0.6rem',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(220, 38, 38, 0.3)',
+                  background: 'rgba(220, 38, 38, 0.1)',
+                  color: '#f87171',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => e.target.style.background = 'rgba(220, 38, 38, 0.2)'}
+                onMouseLeave={(e) => e.target.style.background = 'rgba(220, 38, 38, 0.1)'}
+              >
+                Login Instead →
+              </button>
+            )}
+          </div>
+        )}
 
         {currentStep.type === 'map' ? (
           <div>
