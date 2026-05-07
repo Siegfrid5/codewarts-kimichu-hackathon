@@ -16,6 +16,7 @@ export default function FarmRegistration() {
   const navigate = useNavigate();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     farmer_name: '',
     phone: '',
@@ -61,8 +62,67 @@ export default function FarmRegistration() {
     }
   }, [currentStepIndex, currentStep.type]);
 
+  // Clear error when changing steps
+  useEffect(() => {
+    setError('');
+  }, [currentStepIndex]);
+
+  // Validation functions
+  const validateField = (field, value) => {
+    switch (field) {
+      case 'phone':
+        // Philippine phone number format: 09 followed by 9 digits
+        const phoneRegex = /^09\d{9}$/;
+        if (!value) return 'Phone number is required';
+        if (!phoneRegex.test(value)) return 'Invalid phone number format. Use 09XXXXXXXXX';
+        return null;
+      
+      case 'email':
+        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          return 'Invalid email format';
+        }
+        return null;
+      
+      case 'password':
+        if (!value) return 'Password is required';
+        if (value.length < 8) return 'Password must be at least 8 characters';
+        if (!/[A-Z]/.test(value)) return 'Password must contain at least one uppercase letter';
+        if (!/[a-z]/.test(value)) return 'Password must contain at least one lowercase letter';
+        if (!/[0-9]/.test(value)) return 'Password must contain at least one number';
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) return 'Password must contain at least one special character';
+        return null;
+      
+      case 'username':
+        if (!value) return 'Username is required';
+        if (value.length < 3) return 'Username must be at least 3 characters';
+        if (!/^[a-zA-Z0-9_]+$/.test(value)) return 'Username can only contain letters, numbers, and underscores';
+        return null;
+      
+      case 'farmer_name':
+        if (!value) return 'Name is required';
+        if (value.length < 2) return 'Name must be at least 2 characters';
+        return null;
+      
+      case 'municipality':
+        if (!value) return 'Municipality is required';
+        return null;
+      
+      case 'barangay':
+        if (!value) return 'Barangay is required';
+        return null;
+      
+      default:
+        return null;
+    }
+  };
+
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [currentStep.field]: e.target.value });
+    const value = e.target.value;
+    setFormData({ ...formData, [currentStep.field]: value });
+    
+    // Real-time validation
+    const validationError = validateField(currentStep.field, value);
+    setError(validationError || '');
   };
 
   const handleKeyDown = (e) => {
@@ -80,9 +140,13 @@ export default function FarmRegistration() {
       }
       handleSubmit();
     } else {
-      if (!formData[currentStep.field]) {
+      // Validate current field before proceeding
+      const validationError = validateField(currentStep.field, formData[currentStep.field]);
+      if (validationError) {
+        setError(validationError);
         return;
       }
+      
       if (currentStepIndex < steps.length - 1) {
         setCurrentStepIndex(currentStepIndex + 1);
       }
@@ -455,14 +519,27 @@ export default function FarmRegistration() {
                     fontSize: '1.5rem',
                     background: 'transparent',
                     border: 'none',
-                    borderBottom: '2px solid var(--accent-primary)',
+                    borderBottom: error ? '2px solid var(--danger)' : '2px solid var(--accent-primary)',
                     color: 'var(--text-primary)',
                     outline: 'none',
                     transition: 'border-color 0.2s ease'
                   }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'}
-                  onBlur={(e) => e.target.style.borderColor = 'var(--border-glass)'}
+                  onFocus={(e) => e.target.style.borderColor = error ? 'var(--danger)' : 'var(--accent-primary)'}
+                  onBlur={(e) => e.target.style.borderColor = error ? 'var(--danger)' : 'var(--border-glass)'}
                 />
+                {error && (
+                  <div style={{
+                    marginTop: '0.5rem',
+                    fontSize: '0.875rem',
+                    color: 'var(--danger)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <span>⚠️</span>
+                    <span>{error}</span>
+                  </div>
+                )}
               </div>
             )}
             
