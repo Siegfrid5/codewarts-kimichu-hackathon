@@ -2,7 +2,7 @@
  * GABAYANI — PANAHON Routes
  * 
  * POST /api/panahon
- * Webhook endpoint for Traccar when a user texts "PANAHON" to the system number.
+ * Webhook endpoint for PhilSMS when a user texts "PANAHON" to the system number.
  */
 
 const express = require('express');
@@ -41,7 +41,7 @@ router.post('/test', asyncHandler(async (req, res) => {
 
 /**
  * POST /api/panahon
- * Received from Traccar when a user sends an SMS to the gateway.
+ * Received from PhilSMS when a user sends an SMS to the gateway.
  * Payload usually contains: { number, message }
  */
 router.post('/', asyncHandler(async (req, res) => {

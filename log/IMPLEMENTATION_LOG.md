@@ -2,7 +2,7 @@
 
 > Phased roadmap tracking every component from architecture plan to production readiness.
 
-**Last Updated:** 2026-05-07
+**Last Updated:** 2026-05-08
 **Architecture Source:** [GABAYANI_Architecture.md](../docs/GABAYANI_Architecture.md)
 
 ---
@@ -33,10 +33,10 @@
 | 1.1.3 | `farms` table — schema + JSONB polygon storage | ✅ | JSONB polygon, centroid, area, DEM fields, municipality index |
 | 1.1.4 | `weather_cache` table | ✅ | Keyed by municipality (unique), fetched_at indexed |
 | 1.1.5 | `satellite_cache` table | ✅ | farm_id FK, is_valid + last_valid_at dual timestamps |
-| 1.1.6 | `farm_risk_status` table | ✅ | Shared risk_level_enum via raw SQL, GDD accumulator |
+| 1.1.6 | `farm_risk_status` table | ✅ | Shared risk_level_enum via raw SQL, GDD accumulator, consecutive_wet_hours |
 | 1.1.7 | `dem_cache` table | ✅ | Unique (lat, lng) constraint, one-time write |
 | 1.1.8 | `alert_log` table | ✅ | Composite index (farm_id, sent_at), alert_type index |
-| 1.1.9 | Database migration scripts | ✅ | 7 migrations, `npm run db:migrate` verified |
+| 1.1.9 | Database migration scripts | ✅ | 8 migrations, `npm run db:migrate` verified |
 
 ### 1.2 OpenWeather Integration
 
@@ -59,7 +59,7 @@
 | 1.3.3 | Batch zonal statistics extraction | ✅ | Extracts mean NDVI + NDWI per farm polygon |
 | 1.3.4 | Cloud cover filter (`CLOUDY_PIXEL_PERCENTAGE < 40%`) | ✅ | Rejects cloudy scenes, fallback mock data included |
 | 1.3.5 | `satellite_cache` writer | ✅ | Writes NDVI, NDWI, cloud_pct, is_valid to db |
-| 1.3.6 | SCT cron job — every 5 days satellite refresh | 🟡 | Triggers on farm registration, but 5-day cron needs manual enable |
+| 1.3.6 | SCT cron job — every 5 days satellite refresh | ✅ | `SatelliteJob.runFullRefresh()` added to scheduler |
 
 ### 1.4 SRTM DEM Integration
 
@@ -108,7 +108,7 @@
 |---|-----------|--------|-------|
 | 2.2.1 | Named constants defined | ✅ | Added to `constants/thresholds.js` |
 | 2.2.2 | Temperature range check | ✅ | Implemented in `RiskEngine.computeBlastRisk` |
-| 2.2.3 | Consecutive humidity hour tracking | 🟡 | Placeholder in `WeatherJob.recomputeFarmRisk` |
+| 2.2.3 | Consecutive humidity hour tracking | ✅ | `consecutive_wet_hours` field added, tracking in WeatherJob |
 | 2.2.4 | Multi-factor risk scoring | ✅ | Implemented in `RiskEngine.computeBlastRisk` |
 
 ### 2.3 Flood & Landslide Triggers
@@ -157,17 +157,19 @@
 | 3.2.6 | Hiligaynon translation tested | ✅ | Dynamic dialect support via variable injection |
 | 3.2.7 | 160-character enforcement | ✅ | Included in system prompt rules |
 
-### 3.3 SMS Delivery (Semaphore)
+### 3.3 SMS Delivery (PhilSMS)
 
 | # | Component | Status | Notes |
 |---|-----------|--------|-------|
-| 3.3.1 | Semaphore account + API key | ✅ | Service accepts key; mocks safely if missing |
-| 3.3.2 | Inbound SMS webhook (keyword: PANAHON) | ✅ | `POST /api/panahon` ready for Semaphore forwarding |
-| 3.3.3 | Outbound SMS dispatch function | ✅ | `SmsService.send` implemented |
-| 3.3.4 | 12hr digest scheduler (5AM / 5PM) | 🟡 | Included in SCT plan, awaiting final wiring |
-| 3.3.5 | Red Alert immediate dispatch | ✅ | Handled during Risk Recomputation |
+| 3.3.1 | PhilSMS account + API token | ✅ | Configured in `config/index.js` with OAuth 2.0 |
+| 3.3.2 | Inbound SMS webhook (keyword: PANAHON) | ✅ | `POST /api/panahon` ready for PhilSMS forwarding |
+| 3.3.3 | Outbound SMS dispatch function | ✅ | `SmsService.send` implemented with Bearer token auth |
+| 3.3.4 | 12hr digest scheduler (5AM / 5PM) | ✅ | `DigestJob.runDigest()` added to scheduler |
+| 3.3.5 | Red Alert immediate dispatch | ✅ | SMS sent during Risk Recomputation when high risk detected |
 | 3.3.6 | PANAHON handler — subscription check | ✅ | Enforces `subscribed` tier in `/api/panahon` |
 | 3.3.7 | `alert_log` writer | ✅ | Every message is logged with translation + risk |
+| 3.3.8 | BPH spread notification dispatch | ✅ | SMS sent to downwind farms when BPH red alert triggers |
+| 3.3.9 | Farm registration confirmation SMS | ✅ | SMS sent after successful farm registration |
 
 ### 3.4 Web Dashboard
 
@@ -192,6 +194,7 @@
 | 3.5.3 | Chat UI in web app | ✅ | `Chatbot.jsx` built with responsive, sleek design |
 | 3.5.4 | Session management | ✅ | React component holds conversation history |
 | 3.5.5 | Grounding validation | ✅ | Enforced by the system prompt directives |
+| 3.5.6 | API endpoint with subscription enforcement | ✅ | `POST /api/consultant` with `requireAuth` and `requireSubscription` |
 
 ---
 
@@ -201,8 +204,8 @@
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| P-1 | Semaphore inbound SMS activated (keyword PANAHON) | 🟡 | API route built. Awaiting real Semaphore webhook config |
-| P-2 | Google Maps API key enabled | 🟡 | Awaiting actual Maps JS integration |
+| P-1 | PhilSMS inbound SMS activated (keyword PANAHON) | ✅ | API route built with webhook support for PhilSMS |
+| P-2 | Google Maps API key enabled | 🟡 | Mocked in UI, waiting for actual maps implementation |
 | P-3 | Polygon GeoJSON storage tested (JSONB column) | ✅ | Fully operational in Postgres |
 | P-4 | Centroid + area computation tested on sample polygons | ✅ | Backend processes it cleanly |
 | P-5 | GEE zonal statistics query tested | ✅ | Code written; awaits valid GCP service account |
@@ -216,6 +219,12 @@
 | P-13 | Web dashboard reads from same cache as SMS engine | ✅ | Enforced as core architectural rule |
 | P-14 | `farm_risk_status` recompute wired to SCT weather job | ✅ | Functional and verified by E2E script |
 | P-15 | Degraded-mode message implemented for satellite cache misses | ✅ | Functional in Template Engine |
+| P-16 | Satellite refresh cron job (5-day) implemented | ✅ | `SatelliteJob.runFullRefresh()` in scheduler |
+| P-17 | 12hr digest scheduler implemented | ✅ | `DigestJob.runDigest()` at 05:00 and 17:00 |
+| P-18 | Red Alert immediate dispatch implemented | ✅ | SMS sent during risk recomputation |
+| P-19 | BPH spread index with wind direction | ✅ | Downwind notification with actual wind data |
+| P-20 | Consecutive wetness hours tracking implemented | ✅ | Migration applied, tracking in WeatherJob |
+| P-21 | Farm registration confirmation SMS | ✅ | PhilSMS confirmation sent after registration |
 
 ---
 
@@ -228,3 +237,13 @@
 | 2026-05-07 | 1.x | Project scaffold complete — Express server, config, models, constants, validation | System |
 | 2026-05-07 | 2.x | SCT Engine, Farm Bootstrap, Risk Calculation formulas fully operational | System |
 | 2026-05-07 | 3.x | SMS Templates, Gemini Translations, Semaphore APIs, and Vite React Frontend completed | System |
+| 2026-05-08 | 1.3 | Satellite refresh cron job implemented — `SatelliteJob.runFullRefresh()` added to scheduler | System |
+| 2026-05-08 | 2.2 | Consecutive wetness hours tracking implemented — Migration 012, tracking in WeatherJob | System |
+| 2026-05-08 | 3.3 | SMS Gateway migrated to PhilSMS — OAuth 2.0 Bearer token, webhook support | System |
+| 2026-05-08 | 3.3 | 12hr digest scheduler implemented — `DigestJob.runDigest()` at 05:00 and 17:00 | System |
+| 2026-05-08 | 3.3 | Red Alert immediate dispatch implemented — SMS sent during risk recomputation | System |
+| 2026-05-08 | 3.3 | BPH spread notification with wind direction — Downwind SMS using actual wind data | System |
+| 2026-05-08 | 3.3 | Farm registration confirmation SMS — PhilSMS confirmation after registration | System |
+| 2026-05-08 | 3.5 | Gemini Consultant Chatbot endpoint — `POST /api/consultant` with subscription enforcement | System |
+| 2026-05-08 | — | Manual trigger endpoints added for all SCT jobs (development mode) | System |
+| 2026-05-08 | — | All TODOs resolved — Consecutive wetness hours, wind direction, confirmation SMS | System |

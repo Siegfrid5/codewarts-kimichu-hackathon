@@ -45,10 +45,10 @@ const config = {
   gemini: {
     apiKey: process.env.GEMINI_API_KEY || '',
   },
-  traccar: {
-    url: process.env.TRACCAR_SMS_URL || 'https://www.traccar.org/sms/',
-    token: process.env.TRACCAR_SMS_TOKEN || '',
-    apiKey: process.env.TRACCAR_SMS_API_KEY || '',
+  philsms: {
+    apiUrl: process.env.PHILSMS_API_URL || 'https://dashboard.philsms.com/api/v3/',
+    apiToken: process.env.PHILSMS_API_TOKEN || '',
+    senderId: process.env.PHILSMS_SENDER_ID || 'GABAYANI',
   },
 };
 
