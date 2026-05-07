@@ -264,5 +264,6 @@ This project is built for the UST CodeWarts CICS Hackathon.
 ---
 
 <p align="center">
-  <em>🌾 GABAYANI — Because every Filipino farmer deserves satellite-grade intelligence, even on a feature phone.</em>
+  <em>🌾 GABAYANI — Because every Filipino farmer deserves satellite-grade intelligence, even on a feature phone.</em><br>
+  <small>Last updated: May 2026 (Maintenance Update)</small>
 </p>
