@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User } from 'lucide-react';
+import { Send, Bot, User, Leaf } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -7,7 +7,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 export default function Chatbot() {
   const { apiCall } = useAuth();
   const [messages, setMessages] = useState([
-    { role: 'ai', content: 'Magandang araw! Ako si Gabayani, ang iyong AI Farm Consultant. May katanungan ka ba tungkol sa iyong palayan ngayong araw?' }
+    { role: 'ai', content: 'Magandang araw! Ako si GaBayAni, ang iyong AI Farm Consultant. May katanungan ka ba tungkol sa iyong palayan ngayong araw?' }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -82,33 +82,69 @@ export default function Chatbot() {
   };
 
   return (
-    <div className="container animate-fade-in" style={{ maxWidth: '800px', paddingTop: '6rem' }}>
-      <div className="glass-panel" style={{ height: '70vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="container animate-fade-in" style={{ maxWidth: '800px', paddingTop: '32px', paddingBottom: '48px' }}>
+      {/* Page header */}
+      <div style={{ marginBottom: '24px' }}>
+        <span className="eyebrow" style={{ marginBottom: '4px', display: 'block' }}>AI Consultant</span>
+        <h2 style={{ margin: 0 }}>GaBayAni Consultant</h2>
+      </div>
+
+      <div style={{ 
+        background: 'var(--canvas)',
+        border: '1px solid var(--hairline)',
+        borderRadius: 'var(--rounded-xl)', 
+        boxShadow: 'var(--shadow-float)',
+        height: '70vh', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        overflow: 'hidden' 
+      }}>
         
         {/* Header */}
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-glass)', display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accent-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Bot size={24} color="white" />
+        <div style={{ 
+          padding: '20px 24px', 
+          borderBottom: '1px solid var(--hairline)', 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '12px', 
+          background: 'var(--primary)',
+          borderRadius: 'var(--rounded-xl) var(--rounded-xl) 0 0'
+        }}>
+          <div style={{ 
+            width: '44px', 
+            height: '44px', 
+            borderRadius: 'var(--rounded-full)', 
+            background: 'rgba(255,255,255,0.2)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <Leaf size={24} color="white" />
           </div>
           <div style={{ flex: 1 }}>
-            <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Gabayani Consultant</h3>
-            <p className="text-muted" style={{ fontSize: '0.85rem', margin: 0 }}>Powered by Gemini Pro • Live Farm Data</p>
+            <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--on-primary)', fontWeight: 700 }}>GaBayAni Consultant</h3>
+            <p style={{ fontSize: '13px', margin: 0, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>Powered by Gemini Pro • Live Farm Data</p>
           </div>
           {farms.length > 1 && (
             <select
               value={selectedFarmId || ''}
               onChange={(e) => setSelectedFarmId(e.target.value)}
               style={{
-                background: 'rgba(255,255,255,0.1)',
-                border: '1px solid var(--border-glass)',
-                color: 'var(--text-primary)',
-                padding: '0.5rem',
-                borderRadius: '8px',
-                fontSize: '0.85rem',
+                background: 'rgba(255,255,255,0.15)',
+                border: '1px solid rgba(255,255,255,0.25)',
+                color: 'var(--on-primary)',
+                padding: '8px 12px',
+                borderRadius: 'var(--rounded-md)',
+                fontSize: '13px',
+                fontFamily: 'Plus Jakarta Sans, sans-serif',
+                fontWeight: 500,
+                cursor: 'pointer',
+                backdropFilter: 'blur(4px)'
               }}
             >
               {farms.map(farm => (
-                <option key={farm.id} value={farm.id}>
+                <option key={farm.id} value={farm.id} style={{ color: 'var(--ink)' }}>
                   {farm.municipality} Farm
                 </option>
               ))}
@@ -117,65 +153,141 @@ export default function Chatbot() {
         </div>
 
         {/* Chat Area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ 
+          flex: 1, 
+          overflowY: 'auto', 
+          padding: '24px', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '20px',
+          background: 'var(--surface-1)'
+        }}>
           {messages.map((msg, idx) => (
             <div key={idx} style={{ 
               display: 'flex', 
-              gap: '1rem', 
+              gap: '12px', 
               alignItems: 'flex-start',
               flexDirection: msg.role === 'user' ? 'row-reverse' : 'row'
             }}>
               <div style={{ 
-                width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
-                background: msg.role === 'user' ? 'var(--accent-primary)' : 'var(--accent-secondary)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                width: '36px', 
+                height: '36px', 
+                borderRadius: 'var(--rounded-full)', 
+                flexShrink: 0,
+                background: msg.role === 'user' ? 'var(--primary)' : 'var(--accent)',
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center'
               }}>
-                {msg.role === 'user' ? <User size={16} color="white" /> : <Bot size={16} color="white" />}
+                {msg.role === 'user' 
+                  ? <User size={18} color="white" /> 
+                  : <Leaf size={18} color="white" />
+                }
               </div>
               <div style={{ 
-                background: msg.role === 'user' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)',
-                border: `1px solid ${msg.role === 'user' ? 'rgba(16, 185, 129, 0.4)' : 'var(--border-glass)'}`,
-                padding: '1rem',
-                borderRadius: '12px',
-                borderTopRightRadius: msg.role === 'user' ? '0' : '12px',
-                borderTopLeftRadius: msg.role === 'ai' ? '0' : '12px',
-                maxWidth: '80%',
+                background: msg.role === 'user' ? 'var(--primary)' : 'var(--canvas)',
+                color: msg.role === 'user' ? 'var(--on-primary)' : 'var(--ink)',
+                border: msg.role === 'user' ? 'none' : '1px solid var(--hairline)',
+                padding: '14px 18px',
+                borderRadius: 'var(--rounded-lg)',
+                borderTopRightRadius: msg.role === 'user' ? 'var(--rounded-xs)' : 'var(--rounded-lg)',
+                borderTopLeftRadius: msg.role === 'ai' ? 'var(--rounded-xs)' : 'var(--rounded-lg)',
+                maxWidth: '75%',
                 whiteSpace: 'pre-wrap',
+                boxShadow: msg.role === 'user' ? 'none' : 'var(--shadow-whisper)'
               }}>
-                <p style={{ margin: 0, lineHeight: '1.6' }}>{msg.content}</p>
+                <p style={{ margin: 0, lineHeight: 1.6, fontSize: '15px' }}>{msg.content}</p>
               </div>
             </div>
           ))}
           
           {isTyping && (
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Bot size={16} color="white" />
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+              <div style={{ 
+                width: '36px', 
+                height: '36px', 
+                borderRadius: 'var(--rounded-full)', 
+                background: 'var(--accent)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <Leaf size={18} color="white" />
               </div>
-              <div className="text-muted" style={{ padding: '0.5rem 1rem' }}>Gabayani is thinking...</div>
+              <div style={{ 
+                background: 'var(--canvas)',
+                border: '1px solid var(--hairline)',
+                padding: '14px 18px',
+                borderRadius: 'var(--rounded-lg)',
+                borderTopLeftRadius: 'var(--rounded-xs)',
+                boxShadow: 'var(--shadow-whisper)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {[0, 1, 2].map(i => (
+                    <div key={i} style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: 'var(--primary)',
+                      opacity: 0.4,
+                      animation: `typingDot 1.2s ease-in-out ${i * 0.2}s infinite`
+                    }} />
+                  ))}
+                </div>
+              </div>
             </div>
           )}
           <div ref={chatEndRef} />
         </div>
 
         {/* Input Area */}
-        <div style={{ padding: '1.5rem', borderTop: '1px solid var(--border-glass)', background: 'rgba(0,0,0,0.2)' }}>
-          <form onSubmit={handleSend} style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ 
+          padding: '16px 24px', 
+          borderTop: '1px solid var(--hairline)', 
+          background: 'var(--canvas)' 
+        }}>
+          <form onSubmit={handleSend} style={{ display: 'flex', gap: '12px' }}>
             <input 
               type="text" 
               className="form-input" 
               placeholder="Ask about weather, pests, or fertilizers..." 
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              style={{ flex: 1, background: 'rgba(255,255,255,0.05)' }}
+              style={{ 
+                flex: 1,
+                borderRadius: 'var(--rounded-pill)',
+                paddingLeft: '20px',
+                paddingRight: '20px'
+              }}
             />
-            <button type="submit" className="btn btn-primary" disabled={!input.trim() || isTyping}>
+            <button 
+              type="submit" 
+              className="btn btn-primary" 
+              disabled={!input.trim() || isTyping}
+              style={{
+                padding: '12px 20px',
+                minHeight: '48px',
+                borderRadius: 'var(--rounded-pill)'
+              }}
+            >
               <Send size={18} />
             </button>
           </form>
         </div>
 
       </div>
+
+      {/* Typing animation keyframes */}
+      <style>{`
+        @keyframes typingDot {
+          0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+          30% { transform: translateY(-6px); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }

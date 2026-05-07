@@ -185,6 +185,20 @@ export function AuthProvider({ children }) {
     return response;
   }, [accessToken, refreshAccessToken, logout]);
 
+  /**
+   * Manually set auth state from tokens (e.g. after FarmRegistration's direct fetch flow).
+   * Also persists to localStorage.
+   */
+  const setAuthFromTokens = useCallback((tokens) => {
+    setAccessToken(tokens.accessToken);
+    setRefreshToken(tokens.refreshToken);
+    setUser(tokens.user);
+
+    localStorage.setItem('accessToken', tokens.accessToken);
+    localStorage.setItem('refreshToken', tokens.refreshToken);
+    localStorage.setItem('user', JSON.stringify(tokens.user));
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -195,6 +209,7 @@ export function AuthProvider({ children }) {
         register,
         logout,
         apiCall,
+        setAuthFromTokens,
       }}
     >
       {children}

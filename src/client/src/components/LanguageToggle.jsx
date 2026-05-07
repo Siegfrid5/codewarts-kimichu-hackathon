@@ -1,4 +1,5 @@
 import { useLanguage } from '../contexts/LanguageContext';
+import { Globe } from 'lucide-react';
 
 const LanguageToggle = () => {
   const { language, toggleLanguage } = useLanguage();
@@ -7,28 +8,35 @@ const LanguageToggle = () => {
     <button
       onClick={toggleLanguage}
       style={{
-        background: 'rgba(255, 255, 255, 0.05)',
-        border: '1px solid var(--border-glass)',
-        borderRadius: '8px',
-        padding: '0.5rem 1rem',
+        background: 'var(--surface-1)',
+        border: '1px solid var(--hairline)',
+        borderRadius: 'var(--rounded-pill)',
+        padding: '8px 16px',
         cursor: 'pointer',
-        display: 'flex',
+        display: 'inline-flex',
         alignItems: 'center',
-        gap: '0.5rem',
-        transition: 'all 0.2s ease',
-        transform: 'scale(1)',
-        fontSize: '0.875rem'
+        gap: '6px',
+        transition: 'all 0.25s ease',
+        fontSize: '13px',
+        fontWeight: 600,
+        fontFamily: 'Plus Jakarta Sans, sans-serif',
+        color: 'var(--ink)',
+        minHeight: '36px',
+        letterSpacing: '0.3px',
       }}
       onMouseEnter={(e) => {
-        e.target.style.background = 'rgba(255, 255, 255, 0.1)';
-        e.target.style.transform = 'scale(1.02)';
+        e.currentTarget.style.background = 'var(--primary-pale)';
+        e.currentTarget.style.borderColor = 'var(--primary)';
+        e.currentTarget.style.color = 'var(--primary)';
       }}
       onMouseLeave={(e) => {
-        e.target.style.background = 'rgba(255, 255, 255, 0.05)';
-        e.target.style.transform = 'scale(1)';
+        e.currentTarget.style.background = 'var(--surface-1)';
+        e.currentTarget.style.borderColor = 'var(--hairline)';
+        e.currentTarget.style.color = 'var(--ink)';
       }}
+      aria-label="Toggle language"
     >
-      <span>🌐</span>
+      <Globe size={14} strokeWidth={2.5} />
       <span>{language === 'en' ? 'EN' : 'TL'}</span>
     </button>
   );
