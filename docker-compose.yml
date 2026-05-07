@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gabayani-db
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_DB: gabayani
+      POSTGRES_USER: gabayani_user
+      POSTGRES_PASSWORD: gabayani_dev_password
+    volumes:
+      - gabayani_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U gabayani_user -d gabayani']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  gabayani_pgdata:

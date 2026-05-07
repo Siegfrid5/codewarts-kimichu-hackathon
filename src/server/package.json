@@ -1,0 +1,41 @@
+{
+  "name": "gabayani-server",
+  "version": "1.0.0",
+  "description": "GABAYANI — SMS-based Agricultural Intelligence Backend",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "db:migrate": "knex --knexfile db/knexfile.js migrate:latest",
+    "db:rollback": "knex --knexfile db/knexfile.js migrate:rollback --all",
+    "db:seed": "knex --knexfile db/knexfile.js seed:run",
+    "test": "jest --verbose"
+  },
+  "dependencies": {
+    "@google/earthengine": "^1.7.25",
+    "@google/generative-ai": "^0.24.1",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "google-auth-library": "^10.6.2",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "knex": "^3.1.0",
+    "node-cron": "^3.0.3",
+    "pg": "^8.13.3",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.9"
+  },
+  "keywords": [
+    "agriculture",
+    "sms",
+    "weather",
+    "satellite",
+    "philippines"
+  ],
+  "license": "MIT"
+}
