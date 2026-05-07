@@ -2,7 +2,7 @@
  * GABAYANI — PANAHON Routes
  * 
  * POST /api/panahon
- * Webhook endpoint for Semaphore when a user texts "PANAHON" to the system number.
+ * Webhook endpoint for Traccar when a user texts "PANAHON" to the system number.
  */
 
 const express = require('express');
@@ -16,8 +16,32 @@ const { AppError, asyncHandler } = require('../middleware/errorHandler');
 const router = express.Router();
 
 /**
+ * POST /api/panahon/test
+ * Test endpoint to verify SMS gateway configuration.
+ * Sends a test SMS to the provided number.
+ */
+router.post('/test', asyncHandler(async (req, res) => {
+  const { number } = req.body;
+
+  if (!number) {
+    throw new AppError('Phone number is required', 400);
+  }
+
+  await SmsService.send(
+    number,
+    "GABAYANI SMS Gateway Test - Configuration verified successfully!",
+    "SMS Gateway Test",
+    null,
+    'test',
+    'all_clear'
+  );
+
+  res.json({ success: true, message: 'Test SMS sent successfully' });
+}));
+
+/**
  * POST /api/panahon
- * Received from Semaphore when a user sends an SMS to the gateway.
+ * Received from Traccar when a user sends an SMS to the gateway.
  * Payload usually contains: { number, message }
  */
 router.post('/', asyncHandler(async (req, res) => {
