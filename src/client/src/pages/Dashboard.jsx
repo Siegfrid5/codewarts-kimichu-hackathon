@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Activity, Wind, Droplets, Thermometer, MapPin } from 'lucide-react';
 
 export default function Dashboard() {
   const [farms, setFarms] = useState([]);
@@ -35,11 +34,11 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="container animate-fade-in">
+    <div className="container animate-fade-in" style={{ paddingTop: '6rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h2>My Farms Overview</h2>
         <button className="btn btn-secondary">
-          <Activity size={18} /> Refresh Data
+          Refresh Data
         </button>
       </div>
 
@@ -47,8 +46,7 @@ export default function Dashboard() {
         <div key={farm.id} className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-glass)', paddingBottom: '1.5rem', marginBottom: '1.5rem' }}>
             <div>
-              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <MapPin size={24} color="var(--accent-primary)" />
+              <h3 style={{ margin: 0 }}>
                 {farm.municipality} Farm
               </h3>
               <p className="text-muted" style={{ marginTop: '0.25rem' }}>{farm.crop} • {farm.area} hectares</p>
@@ -64,21 +62,15 @@ export default function Dashboard() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
             <div className="glass-card" style={{ padding: '1.5rem' }}>
-              <h4 className="text-muted" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Thermometer size={18} /> Temperature
-              </h4>
+              <h4 className="text-muted">Temperature</h4>
               <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{farm.weather.temp}°C</p>
             </div>
             <div className="glass-card" style={{ padding: '1.5rem' }}>
-              <h4 className="text-muted" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Droplets size={18} /> Humidity
-              </h4>
+              <h4 className="text-muted">Humidity</h4>
               <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{farm.weather.humidity}%</p>
             </div>
             <div className="glass-card" style={{ padding: '1.5rem' }}>
-              <h4 className="text-muted" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Wind size={18} /> Rain (1hr)
-              </h4>
+              <h4 className="text-muted">Rain (1hr)</h4>
               <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{farm.weather.rain_1h} mm</p>
             </div>
           </div>
