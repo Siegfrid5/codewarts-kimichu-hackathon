@@ -1,40 +1,39 @@
 /**
- * GABAYANI — SMS Service (Traccar SMS Gateway)
+ * GABAYANI — SMS Service (PhilSMS)
  * 
- * Handles sending actual SMS messages to farmers using Traccar SMS Gateway.
- * If the Traccar configuration is missing, it mocks the network call
+ * Handles sending actual SMS messages to farmers using PhilSMS.
+ * If the PhilSMS configuration is missing, it mocks the network call
  * (printing to console) so the app still functions during demos.
  * 
  * Also logs every sent message to the `alert_log` table for audit
  * and BPH spread index tracking.
  * 
- * Traccar SMS Gateway: https://www.traccar.org/sms-gateway/
- * HTTP API: https://www.traccar.org/http-sms-api/
+ * PhilSMS API: https://dashboard.philsms.com/api/v3/
+ * Send endpoint: https://dashboard.philsms.com/api/v3/sms/send
  */
 
 const config = require('../config');
 const AlertLog = require('../models/AlertLog');
 
-const TRACCAR_DEFAULT_URL = 'https://www.traccar.org/sms/';
-
 const SmsService = {
   /**
    * Send an SMS and log it.
    * 
-   * @param {string} phone - Target phone number
+   * @param {string} phone - Target phone number (format: 639XXXXXXXXX)
    * @param {string} message - Translated message body
    * @param {string} englishTemplate - Original English template (for auditing)
    * @param {string} farmId - Associated farm ID
-   * @param {string} alertType - 'digest' | 'panahon' | 'red_alert'
+   * @param {string} alertType - 'digest' | 'panahon' | 'red_alert' | 'test'
    * @param {string} riskLevel - 'all_clear' | 'moderate' | 'red'
    */
   async send(phone, message, englishTemplate, farmId, alertType, riskLevel) {
-    const traccarUrl = config.traccar?.url || TRACCAR_DEFAULT_URL;
-    const traccarToken = config.traccar?.token;
-    const traccarApiKey = config.traccar?.apiKey;
+    const apiUrl = config.philsms?.apiUrl || 'https://dashboard.philsms.com/api/v3/';
+    const apiToken = config.philsms?.apiToken;
+    const senderId = config.philsms?.senderId || 'GABAYANI';
+    const sendUrl = `${apiUrl}sms/send`;
 
-    // 1. Send the SMS via Traccar (or mock it)
-    if ((!traccarToken && !traccarApiKey) || traccarToken === 'your-traccar-token') {
+    // 1. Send the SMS via PhilSMS (or mock it)
+    if (!apiToken || apiToken === 'your-philsms-api-token') {
       console.log('\n📱 --- [MOCK SMS DISPATCH] ---');
       console.log(`📱 To: ${phone}`);
       console.log(`📱 Type: ${alertType} (${riskLevel})`);
@@ -42,35 +41,33 @@ const SmsService = {
       console.log('📱 ---------------------------\n');
     } else {
       try {
-        // Prepare JSON payload for Traccar
+        // Prepare JSON payload for PhilSMS
         const payload = {
-          to: phone,
+          recipient: phone,
+          sender_id: senderId,
+          type: 'plain',
           message: message
         };
 
-        // Prepare headers
+        // Prepare headers with Bearer token (OAuth 2.0)
         const headers = {
+          'Authorization': `Bearer ${apiToken}`,
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         };
 
-        // Use API key if provided (direct phone connection), otherwise use token
-        if (traccarApiKey) {
-          headers['Authorization'] = traccarApiKey;
-        } else if (traccarToken) {
-          headers['Authorization'] = traccarToken;
-        }
-
-        const response = await fetch(traccarUrl, {
+        const response = await fetch(sendUrl, {
           method: 'POST',
           headers: headers,
           body: JSON.stringify(payload)
         });
 
-        if (!response.ok) {
-          const errText = await response.text();
-          console.error(`❌ [SMS] Traccar error: ${response.status} ${errText}`);
+        const result = await response.json();
+
+        if (!response.ok || result.status !== 'success') {
+          console.error(`❌ [SMS] PhilSMS error: ${response.status}`, result);
         } else {
-          console.log(`📱 [SMS] Sent successfully to ${phone} via Traccar`);
+          console.log(`📱 [SMS] Sent successfully to ${phone} via PhilSMS`);
         }
       } catch (err) {
         console.error(`❌ [SMS] Failed to send SMS: ${err.message}`);

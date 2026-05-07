@@ -40,15 +40,15 @@ const config = {
     privateKeyPath: process.env.GEE_PRIVATE_KEY_PATH || '',
   },
   googleMaps: {
-    apiKey: process.env.GOOGLE_MAPS_API_KEY || '',
+    apiKey: process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || '',
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY || '',
   },
-  traccar: {
-    url: process.env.TRACCAR_SMS_URL || 'https://www.traccar.org/sms/',
-    token: process.env.TRACCAR_SMS_TOKEN || '',
-    apiKey: process.env.TRACCAR_SMS_API_KEY || '',
+  philsms: {
+    apiUrl: process.env.PHILSMS_API_URL || 'https://dashboard.philsms.com/api/v3/',
+    apiToken: process.env.PHILSMS_API_TOKEN || '',
+    senderId: process.env.PHILSMS_SENDER_ID || 'GABAYANI',
   },
 };
 

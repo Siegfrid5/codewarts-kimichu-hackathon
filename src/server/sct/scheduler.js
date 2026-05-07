@@ -14,6 +14,8 @@
 
 const cron = require('node-cron');
 const WeatherJob = require('./weatherJob');
+const SatelliteJob = require('./satelliteJob');
+const DigestJob = require('./digestJob');
 
 // Timezone for all SCT schedules
 const TIMEZONE = 'Asia/Manila';
@@ -57,10 +59,30 @@ const SCTScheduler = {
       await WeatherJob.runRainfallMicroRefresh();
     }, { timezone: TIMEZONE });
 
+    // ---- Satellite Refresh (every 5 days) ----
+    // Refresh Sentinel-2 NDVI/NDWI data for all farm locations
+    cron.schedule('0 0 */5 * *', async () => {
+      console.log('\n⏰ [SCT] Satellite refresh triggered');
+      await SatelliteJob.runFullRefresh();
+    }, { timezone: TIMEZONE });
+
+    // ---- SMS Digest (05:00 and 17:00) ----
+    // Send daily digests to all farmers (freemium benefit)
+    cron.schedule('0 5 * * *', async () => {
+      console.log('\n⏰ [SCT] 05:00 digest triggered');
+      await DigestJob.runDigest();
+    }, { timezone: TIMEZONE });
+
+    cron.schedule('0 17 * * *', async () => {
+      console.log('\n⏰ [SCT] 17:00 digest triggered');
+      await DigestJob.runDigest();
+    }, { timezone: TIMEZONE });
+
     console.log('⏰ [SCT] Scheduler started:');
     console.log('   🌦️  Weather refresh:   04:30, 12:00, 15:00, 21:00');
     console.log('   🌧️  Rainfall refresh:  Every hour');
-    console.log('   🛰️  Satellite refresh: Every 5 days (manual/separate)');
+    console.log('   🛰️  Satellite refresh: Every 5 days');
+    console.log('   📋 SMS Digest:        05:00, 17:00');
   },
 
   /**
@@ -78,6 +100,24 @@ const SCTScheduler = {
   async triggerRainfallRefresh() {
     console.log('⏰ [SCT] Manual rainfall refresh triggered');
     return WeatherJob.runRainfallMicroRefresh();
+  },
+
+  /**
+   * Manually trigger a satellite refresh (for testing/debugging).
+   * @returns {Object} Run summary
+   */
+  async triggerSatelliteRefresh() {
+    console.log('⏰ [SCT] Manual satellite refresh triggered');
+    return SatelliteJob.runFullRefresh();
+  },
+
+  /**
+   * Manually trigger a digest cycle (for testing/debugging).
+   * @returns {Object} Run summary
+   */
+  async triggerDigest() {
+    console.log('⏰ [SCT] Manual digest cycle triggered');
+    return DigestJob.runDigest();
   },
 };
 

@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "npx --yes vite",
+    "build": "npx --yes vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "npx --yes vite preview"
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.8",

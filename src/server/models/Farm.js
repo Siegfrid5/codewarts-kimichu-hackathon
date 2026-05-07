@@ -77,6 +77,15 @@ const Farm = {
   },
 
   /**
+   * Get all farms.
+   * Used by satellite refresh job to determine grid cells.
+   * @returns {Array}
+   */
+  async getAll() {
+    return db(TABLE).select('*');
+  },
+
+  /**
    * Find all farms within a radius of a given point (Haversine formula).
    * Used by BPH spread index to identify neighboring farms.
    * 

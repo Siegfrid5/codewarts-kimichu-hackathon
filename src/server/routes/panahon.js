@@ -2,7 +2,7 @@
  * GABAYANI — PANAHON Routes
  * 
  * POST /api/panahon
- * Webhook endpoint for Traccar when a user texts "PANAHON" to the system number.
+ * Webhook endpoint for PhilSMS when a user texts "PANAHON" to the system number.
  */
 
 const express = require('express');
@@ -41,7 +41,7 @@ router.post('/test', asyncHandler(async (req, res) => {
 
 /**
  * POST /api/panahon
- * Received from Traccar when a user sends an SMS to the gateway.
+ * Received from PhilSMS when a user sends an SMS to the gateway.
  * Payload usually contains: { number, message }
  */
 router.post('/', asyncHandler(async (req, res) => {
@@ -53,10 +53,6 @@ router.post('/', asyncHandler(async (req, res) => {
 
   // Acknowledge webhook immediately
   res.json({ success: true });
-
-  // Only respond to the "PANAHON" command
-  const command = message.trim().toUpperCase();
-  if (!command.startsWith('PANAHON')) return;
 
   try {
     // 1. Identify User
@@ -96,24 +92,38 @@ router.post('/', asyncHandler(async (req, res) => {
 
     if (!farmContext) return;
 
-    // 4. Generate Response
-    const template = TemplateEngine.generatePanahonResponse(farmContext);
+    // 4. Routing: PANAHON Command vs Chatbot Query
+    const command = message.trim().toUpperCase();
+    
+    if (command.startsWith('PANAHON')) {
+      // --- PANAHON Digest Flow ---
+      const template = TemplateEngine.generatePanahonResponse(farmContext);
+      const translated = await GeminiService.translateForSms(template, farmContext.dialect);
 
-    // 5. Translate
-    const translated = await GeminiService.translateForSms(template, farmContext.dialect);
-
-    // 6. Send
-    await SmsService.send(
-      number,
-      translated,
-      template,
-      farmId,
-      'panahon',
-      farmContext.bph_risk === 'high' || farmContext.blast_risk === 'high' || farmContext.flood_risk === 'high' ? 'red' : 'all_clear'
-    );
+      await SmsService.send(
+        number,
+        translated,
+        template,
+        farmId,
+        'panahon',
+        farmContext.bph_risk === 'high' || farmContext.blast_risk === 'high' || farmContext.flood_risk === 'high' ? 'red' : 'all_clear'
+      );
+    } else {
+      // --- AI Chatbot Flow ---
+      const reply = await GeminiService.consult(message, farmContext);
+      
+      await SmsService.send(
+        number,
+        reply,
+        "Chatbot Response",
+        farmId,
+        'chatbot',
+        'all_clear'
+      );
+    }
 
   } catch (err) {
-    console.error(`❌ [PANAHON] Webhook processing failed:`, err);
+    console.error(`❌ [SMS Webhook] Processing failed:`, err);
   }
 }));
 
