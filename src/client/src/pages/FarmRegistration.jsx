@@ -204,8 +204,12 @@ export default function FarmRegistration() {
     try {
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
       
-      // First, register the user
-      const registerResponse = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      // Prepare geoJson coordinates
+      const geoJsonCoords = polygonCoords.map(p => [p.lng, p.lat]);
+      geoJsonCoords.push([...geoJsonCoords[0]]);
+
+      // Combined user and farm registration in single transaction
+      const response = await fetch(`${API_BASE_URL}/api/auth/register-with-farm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -214,57 +218,33 @@ export default function FarmRegistration() {
           username: formData.username,
           email: formData.email,
           password: formData.password,
+          municipality: formData.municipality,
+          barangay: formData.barangay,
+          dialect: formData.dialect,
+          crop: formData.crop,
+          area_hectares: areaHectares,
+          centroid_lat: centroid.lat,
+          centroid_lng: centroid.lng,
+          polygon_geojson: {
+            type: "Polygon",
+            coordinates: [geoJsonCoords]
+          }
         }),
       });
 
-      const registerData = await registerResponse.json();
+      const data = await response.json();
       
-      if (!registerData.success) {
-        const errorMessage = registerData.error?.details 
-          ? registerData.error.details.join(', ')
-          : registerData.error?.message || 'Registration failed';
+      if (!data.success) {
+        const errorMessage = data.error?.details 
+          ? data.error.details.join(', ')
+          : data.error?.message || 'Registration failed';
         throw new Error(errorMessage);
       }
 
-      // Then register the farm
-      const geoJsonCoords = polygonCoords.map(p => [p.lng, p.lat]);
-      geoJsonCoords.push([...geoJsonCoords[0]]);
-
-      const farmPayload = {
-        farmer_name: formData.farmer_name,
-        phone: formData.phone,
-        municipality: formData.municipality,
-        barangay: formData.barangay,
-        dialect: formData.dialect,
-        crop: formData.crop,
-        area_hectares: areaHectares,
-        centroid_lat: centroid.lat,
-        centroid_lng: centroid.lng,
-        polygon_geojson: {
-          type: "Polygon",
-          coordinates: [geoJsonCoords]
-        }
-      };
-
-      const farmResponse = await fetch(`${API_BASE_URL}/api/farms/register`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${registerData.data.accessToken}`
-        },
-        body: JSON.stringify(farmPayload),
-      });
-
-      const farmData = await farmResponse.json();
-      
-      if (!farmData.success) {
-        throw new Error(farmData.error || 'Farm registration failed');
-      }
-
       // Store tokens in localStorage
-      localStorage.setItem('accessToken', registerData.data.accessToken);
-      localStorage.setItem('refreshToken', registerData.data.refreshToken);
-      localStorage.setItem('user', JSON.stringify(registerData.data.user));
+      localStorage.setItem('accessToken', data.data.accessToken);
+      localStorage.setItem('refreshToken', data.data.refreshToken);
+      localStorage.setItem('user', JSON.stringify(data.data.user));
 
       setCurrentStepIndex(steps.length); // Success step
     } catch (error) {

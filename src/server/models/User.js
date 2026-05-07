@@ -173,6 +173,14 @@ const User = {
         account_locked_until: null,
       });
   },
+
+  /**
+   * Delete a user by ID.
+   * @param {string} id - UUID
+   */
+  async delete(id) {
+    await db(TABLE).where({ id }).del();
+  },
 };
 
 module.exports = User;

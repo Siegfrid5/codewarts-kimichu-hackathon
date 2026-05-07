@@ -16,6 +16,8 @@ const RefreshToken = require('../models/RefreshToken');
 const { validate, userRegistrationSchema, loginSchema, refreshTokenSchema } = require('../utils/validation');
 const { AppError, asyncHandler } = require('../middleware/errorHandler');
 const { authLimiter } = require('../middleware/rateLimit');
+const { requireAuth } = require('../middleware/auth');
+const Farm = require('../models/Farm');
 
 const router = express.Router();
 
@@ -239,6 +241,150 @@ router.post('/logout', asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: { message: 'Logged out successfully' },
+  });
+}));
+
+/**
+ * POST /api/auth/register-with-farm
+ * Combined user and farm registration in a single transaction.
+ * If either fails, nothing is added to the database.
+ */
+router.post('/register-with-farm', authLimiter, asyncHandler(async (req, res) => {
+  const { 
+    name, phone, username, email, password,
+    municipality, barangay, dialect, crop,
+    area_hectares, centroid_lat, centroid_lng,
+    polygon_geojson
+  } = req.body;
+
+  // Validate user data
+  const userValidation = { name, phone, username, email, password };
+  const { error: userError } = validate(userRegistrationSchema, userValidation);
+  if (userError) {
+    throw new AppError('User validation failed', 400, userError.details.map((d) => d.message));
+  }
+
+  // Validate farm data
+  if (!municipality || !barangay || !polygon_geojson || !area_hectares || !centroid_lat || !centroid_lng) {
+    throw new AppError('Farm data is required', 400);
+  }
+
+  // Use transaction to ensure atomicity
+  const trx = await db.transaction();
+
+  try {
+    // Check if phone already registered
+    const existingPhone = await User.findByPhone(phone);
+    if (existingPhone) {
+      throw new AppError('Phone number already registered', 409);
+    }
+
+    // Check if username already taken (if provided)
+    if (username) {
+      const existingUsername = await User.findByUsername(username);
+      if (existingUsername) {
+        throw new AppError('Username already taken', 409);
+      }
+    }
+
+    // Check if email already taken (if provided)
+    if (email) {
+      const existingEmail = await User.findByEmail(email);
+      if (existingEmail) {
+        throw new AppError('Email already registered', 409);
+      }
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(12);
+    const password_hash = await bcrypt.hash(password, salt);
+
+    // Create user
+    const userData = {
+      name,
+      phone,
+      password_hash,
+    };
+
+    if (username && username.trim()) {
+      userData.username = username.trim();
+    }
+
+    if (email && email.trim()) {
+      userData.email = email.trim();
+    }
+
+    const [user] = await trx('users')
+      .insert(userData)
+      .returning('*');
+
+    // Create farm
+    const farmData = {
+      farmer_name: name,
+      phone,
+      municipality,
+      barangay,
+      dialect: dialect || 'tagalog',
+      crop: crop || 'rice',
+      area_hectares,
+      centroid_lat,
+      centroid_lng,
+      polygon_geojson,
+      user_id: user.id
+    };
+
+    await trx('farms').insert(farmData);
+
+    // Commit transaction
+    await trx.commit();
+
+    // Generate tokens
+    const accessToken = jwt.sign(
+      { id: user.id, phone: user.phone, tier: user.subscription_tier, type: 'access' },
+      config.jwt.secret,
+      { expiresIn: '15m' }
+    );
+
+    const refreshTokenData = await RefreshToken.create(user.id, 7);
+
+    res.status(201).json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          phone: user.phone,
+          username: user.username,
+          email: user.email,
+          subscription_tier: user.subscription_tier,
+        },
+        accessToken,
+        refreshToken: refreshTokenData.token,
+      },
+    });
+  } catch (err) {
+    // Rollback transaction on error
+    await trx.rollback();
+    throw err;
+  }
+}));
+
+/**
+ * DELETE /api/auth/delete-user
+ * Delete user account (used during registration rollback)
+ */
+router.delete('/delete-user', requireAuth, asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+
+  // Delete user's refresh tokens
+  await RefreshToken.revokeAllForUser(userId);
+
+  // Delete user
+  await User.delete(userId);
+
+  res.json({
+    success: true,
+    data: { message: 'User deleted successfully' },
   });
 }));
 
