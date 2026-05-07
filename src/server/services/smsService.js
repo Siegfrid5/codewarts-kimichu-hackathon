@@ -1,18 +1,21 @@
 /**
- * GABAYANI — SMS Service (Semaphore API)
+ * GABAYANI — SMS Service (Traccar SMS Gateway)
  * 
- * Handles sending actual SMS messages to farmers.
- * If the Semaphore API key is missing, it mocks the network call
+ * Handles sending actual SMS messages to farmers using Traccar SMS Gateway.
+ * If the Traccar configuration is missing, it mocks the network call
  * (printing to console) so the app still functions during demos.
  * 
  * Also logs every sent message to the `alert_log` table for audit
  * and BPH spread index tracking.
+ * 
+ * Traccar SMS Gateway: https://www.traccar.org/sms-gateway/
+ * HTTP API: https://www.traccar.org/http-sms-api/
  */
 
 const config = require('../config');
 const AlertLog = require('../models/AlertLog');
 
-const SEMAPHORE_URL = 'https://api.semaphore.co/api/v4/messages';
+const TRACCAR_DEFAULT_URL = 'https://www.traccar.org/sms/';
 
 const SmsService = {
   /**
@@ -26,11 +29,12 @@ const SmsService = {
    * @param {string} riskLevel - 'all_clear' | 'moderate' | 'red'
    */
   async send(phone, message, englishTemplate, farmId, alertType, riskLevel) {
-    const apiKey = config.semaphore.apiKey;
-    const senderName = config.semaphore.senderName;
+    const traccarUrl = config.traccar?.url || TRACCAR_DEFAULT_URL;
+    const traccarToken = config.traccar?.token;
+    const traccarApiKey = config.traccar?.apiKey;
 
-    // 1. Send the SMS via Semaphore (or mock it)
-    if (!apiKey || apiKey === 'your-semaphore-api-key') {
+    // 1. Send the SMS via Traccar (or mock it)
+    if ((!traccarToken && !traccarApiKey) || traccarToken === 'your-traccar-token') {
       console.log('\n📱 --- [MOCK SMS DISPATCH] ---');
       console.log(`📱 To: ${phone}`);
       console.log(`📱 Type: ${alertType} (${riskLevel})`);
@@ -38,25 +42,35 @@ const SmsService = {
       console.log('📱 ---------------------------\n');
     } else {
       try {
-        const formData = new URLSearchParams();
-        formData.append('apikey', apiKey);
-        formData.append('number', phone);
-        formData.append('message', message);
-        formData.append('sendername', senderName);
+        // Prepare JSON payload for Traccar
+        const payload = {
+          to: phone,
+          message: message
+        };
 
-        const response = await fetch(SEMAPHORE_URL, {
+        // Prepare headers
+        const headers = {
+          'Content-Type': 'application/json',
+        };
+
+        // Use API key if provided (direct phone connection), otherwise use token
+        if (traccarApiKey) {
+          headers['Authorization'] = traccarApiKey;
+        } else if (traccarToken) {
+          headers['Authorization'] = traccarToken;
+        }
+
+        const response = await fetch(traccarUrl, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: formData.toString()
+          headers: headers,
+          body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
           const errText = await response.text();
-          console.error(`❌ [SMS] Semaphore error: ${response.status} ${errText}`);
+          console.error(`❌ [SMS] Traccar error: ${response.status} ${errText}`);
         } else {
-          console.log(`📱 [SMS] Sent successfully to ${phone}`);
+          console.log(`📱 [SMS] Sent successfully to ${phone} via Traccar`);
         }
       } catch (err) {
         console.error(`❌ [SMS] Failed to send SMS: ${err.message}`);

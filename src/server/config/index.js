@@ -45,9 +45,10 @@ const config = {
   gemini: {
     apiKey: process.env.GEMINI_API_KEY || '',
   },
-  semaphore: {
-    apiKey: process.env.SEMAPHORE_API_KEY || '',
-    senderName: process.env.SEMAPHORE_SENDER_NAME || 'GABAYANI',
+  traccar: {
+    url: process.env.TRACCAR_SMS_URL || 'https://www.traccar.org/sms/',
+    token: process.env.TRACCAR_SMS_TOKEN || '',
+    apiKey: process.env.TRACCAR_SMS_API_KEY || '',
   },
 };
 

@@ -72,11 +72,10 @@ router.post('/register', requireAuth, asyncHandler(async (req, res) => {
       // 3. Fetch Satellite Data
       if (farm.polygon_geojson) {
         const satData = await GeeService.getSatelliteData(farm.polygon_geojson);
-        await SatelliteCache.upsertByFarmId(farm.id, {
+        await SatelliteCache.upsertByLocation(farm.centroid_lat, farm.centroid_lng, {
           ndvi: satData.ndvi,
           ndwi: satData.ndwi,
-          cloud_cover_pct: satData.cloud_pct,
-          is_valid: satData.cloud_pct < 40
+          cloud_pct: satData.cloud_pct
         });
         console.log(`  ✅ [Bootstrap] Satellite data fetched: NDVI ${satData.ndvi.toFixed(2)}, Cloud ${satData.cloud_pct.toFixed(1)}%`);
       }

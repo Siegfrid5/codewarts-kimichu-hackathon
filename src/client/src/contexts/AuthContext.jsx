@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -95,7 +95,7 @@ export function AuthProvider({ children }) {
     return data.data.user;
   };
 
-  const refreshAccessToken = async () => {
+  const refreshAccessToken = useCallback(async () => {
     if (!refreshToken) {
       throw new Error('No refresh token available');
     }
@@ -117,9 +117,9 @@ export function AuthProvider({ children }) {
 
     localStorage.setItem('accessToken', data.data.accessToken);
     localStorage.setItem('refreshToken', data.data.refreshToken);
-  };
+  }, [refreshToken]);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       if (refreshToken) {
         await fetch(`${API_BASE_URL}/api/auth/logout`, {
@@ -139,9 +139,9 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
     }
-  };
+  }, [refreshToken]);
 
-  const apiCall = async (url, options = {}) => {
+  const apiCall = useCallback(async (url, options = {}) => {
     let token = accessToken;
 
     // Ensure we have a valid access token
@@ -180,7 +180,7 @@ export function AuthProvider({ children }) {
     }
 
     return response;
-  };
+  }, [accessToken, refreshAccessToken, logout]);
 
   return (
     <AuthContext.Provider

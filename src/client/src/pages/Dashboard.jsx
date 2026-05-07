@@ -16,13 +16,17 @@ export default function Dashboard() {
         const data = await response.json();
         
         if (data.success) {
-          setFarms(data.data);
+          // API returns { data: { farms: [...] } }
+          const farmsData = data.data?.farms || [];
+          setFarms(Array.isArray(farmsData) ? farmsData : []);
         } else {
           setError('Failed to fetch farm data');
+          setFarms([]);
         }
       } catch (err) {
         console.error('Error fetching farms:', err);
         setError('Failed to connect to server');
+        setFarms([]);
       } finally {
         setLoading(false);
       }
@@ -74,7 +78,7 @@ export default function Dashboard() {
             </div>
             <div style={{ textAlign: 'right' }}>
               <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>Overall Status</p>
-              {farm.risks.flood === 'high' || farm.risks.bph === 'high' || farm.risks.blast === 'high' 
+              {farm.risk_status?.flood_risk === 'high' || farm.risk_status?.bph_risk === 'high' || farm.risk_status?.blast_risk === 'high'
                 ? <span className="badge badge-danger" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>CRITICAL ALERT</span>
                 : <span className="badge badge-safe" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>ALL CLEAR</span>
               }
@@ -84,15 +88,15 @@ export default function Dashboard() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
             <div className="glass-card" style={{ padding: '1.5rem' }}>
               <h4 className="text-muted">Temperature</h4>
-              <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{farm.weather.temp}°C</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{farm.weather?.temp || '--'}°C</p>
             </div>
             <div className="glass-card" style={{ padding: '1.5rem' }}>
               <h4 className="text-muted">Humidity</h4>
-              <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{farm.weather.humidity}%</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{farm.weather?.humidity || '--'}%</p>
             </div>
             <div className="glass-card" style={{ padding: '1.5rem' }}>
               <h4 className="text-muted">Rain (1hr)</h4>
-              <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{farm.weather.rain_1h} mm</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{farm.weather?.rain_1h || '--'} mm</p>
             </div>
           </div>
 
@@ -100,15 +104,15 @@ export default function Dashboard() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
             <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
               <span>Brown Planthopper</span>
-              {getRiskBadge(farm.risks.bph)}
+              {getRiskBadge(farm.risk_status?.bph_risk)}
             </div>
             <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
               <span>Rice Blast</span>
-              {getRiskBadge(farm.risks.blast)}
+              {getRiskBadge(farm.risk_status?.blast_risk)}
             </div>
             <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
               <span>Flood Risk</span>
-              {getRiskBadge(farm.risks.flood)}
+              {getRiskBadge(farm.risk_status?.flood_risk)}
             </div>
           </div>
         </div>
