@@ -281,133 +281,49 @@ export default function FarmRegistration() {
     let registerData = null;
     
     try {
-      // ─── Step 1: Register the user account ───
-      const registerController = new AbortController();
-      const registerTimeout = setTimeout(() => registerController.abort(), TIMEOUT_MS);
-
-      let registerResponse;
-      try {
-        registerResponse = await fetch(`${API_BASE_URL}/api/auth/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: registerController.signal,
-          body: JSON.stringify({
-            name: formData.farmer_name,
-            phone: formData.phone,
-            username: formData.username,
-            email: formData.email,
-            password: formData.password,
-          }),
-        });
-      } catch (fetchErr) {
-        if (fetchErr.name === 'AbortError') {
-          throw { type: 'timeout', message: 'The request timed out. Please check your internet connection and try again.' };
-        }
-        throw { type: 'network', message: 'Unable to connect to the server. Please check your internet connection and try again.' };
-      } finally {
-        clearTimeout(registerTimeout);
-      }
-
-      const registerParsed = await safeJsonParse(registerResponse);
-      if (registerParsed.error) {
-        throw { type: 'server', message: registerParsed.error };
-      }
-      registerData = registerParsed.data;
-
-      if (!registerData.success) {
-        const parsed = parseServerError(registerResponse.status, registerData.error, 'Account registration failed');
-        throw parsed;
-      }
-
-      // ─── Step 2: Register the farm ───
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      
+      // Prepare geoJson coordinates
       const geoJsonCoords = polygonCoords.map(p => [p.lng, p.lat]);
       geoJsonCoords.push([...geoJsonCoords[0]]);
 
-      const farmPayload = {
-        farmer_name: formData.farmer_name,
-        phone: formData.phone,
-        municipality: formData.municipality,
-        barangay: formData.barangay,
-        dialect: formData.dialect,
-        crop: formData.crop,
-        area_hectares: areaHectares,
-        centroid_lat: centroid.lat,
-        centroid_lng: centroid.lng,
-        polygon_geojson: {
-          type: "Polygon",
-          coordinates: [geoJsonCoords]
-        }
-      };
+      // Combined user and farm registration in single transaction
+      const response = await fetch(`${API_BASE_URL}/api/auth/register-with-farm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.farmer_name,
+          phone: formData.phone,
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          municipality: formData.municipality,
+          barangay: formData.barangay,
+          dialect: formData.dialect,
+          crop: formData.crop,
+          area_hectares: areaHectares,
+          centroid_lat: centroid.lat,
+          centroid_lng: centroid.lng,
+          polygon_geojson: {
+            type: "Polygon",
+            coordinates: [geoJsonCoords]
+          }
+        }),
+      });
 
-      const farmController = new AbortController();
-      const farmTimeout = setTimeout(() => farmController.abort(), TIMEOUT_MS);
-
-      let farmResponse;
-      try {
-        farmResponse = await fetch(`${API_BASE_URL}/api/farms/register`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${registerData.data.accessToken}`
-          },
-          signal: farmController.signal,
-          body: JSON.stringify(farmPayload),
-        });
-      } catch (fetchErr) {
-        // User account was created but farm registration failed at network level.
-        // Save tokens so the user can register their farm later from the dashboard.
-        localStorage.setItem('accessToken', registerData.data.accessToken);
-        localStorage.setItem('refreshToken', registerData.data.refreshToken);
-        localStorage.setItem('user', JSON.stringify(registerData.data.user));
-
-        if (fetchErr.name === 'AbortError') {
-          throw {
-            type: 'partial',
-            message: 'Your account was created, but farm registration timed out.',
-            details: 'You have been logged in. You can register your farm from the dashboard.'
-          };
-        }
-        throw {
-          type: 'partial',
-          message: 'Your account was created, but we could not register your farm due to a network issue.',
-          details: 'You have been logged in. You can register your farm from the dashboard.'
-        };
-      } finally {
-        clearTimeout(farmTimeout);
+      const data = await response.json();
+      
+      if (!data.success) {
+        const errorMessage = data.error?.details 
+          ? data.error.details.join(', ')
+          : data.error?.message || 'Registration failed';
+        throw new Error(errorMessage);
       }
 
-      const farmParsed = await safeJsonParse(farmResponse);
-      if (farmParsed.error) {
-        // User was created, farm endpoint returned non-JSON
-        localStorage.setItem('accessToken', registerData.data.accessToken);
-        localStorage.setItem('refreshToken', registerData.data.refreshToken);
-        localStorage.setItem('user', JSON.stringify(registerData.data.user));
-        throw {
-          type: 'partial',
-          message: 'Your account was created, but farm registration encountered a server error.',
-          details: 'You have been logged in. You can register your farm from the dashboard.'
-        };
-      }
-
-      const farmData = farmParsed.data;
-      if (!farmData.success) {
-        // User was created, but farm validation/creation failed
-        localStorage.setItem('accessToken', registerData.data.accessToken);
-        localStorage.setItem('refreshToken', registerData.data.refreshToken);
-        localStorage.setItem('user', JSON.stringify(registerData.data.user));
-
-        const farmError = parseServerError(farmResponse.status, farmData.error, 'Farm registration failed');
-        throw {
-          type: 'partial',
-          message: `Your account was created, but farm registration failed: ${farmError.message}`,
-          details: 'You have been logged in. You can register your farm from the dashboard.'
-        };
-      }
-
-      // ─── Success: both account and farm registered ───
-      localStorage.setItem('accessToken', registerData.data.accessToken);
-      localStorage.setItem('refreshToken', registerData.data.refreshToken);
-      localStorage.setItem('user', JSON.stringify(registerData.data.user));
+      // Store tokens in localStorage
+      localStorage.setItem('accessToken', data.data.accessToken);
+      localStorage.setItem('refreshToken', data.data.refreshToken);
+      localStorage.setItem('user', JSON.stringify(data.data.user));
 
       setCurrentStepIndex(steps.length); // Success step
     } catch (err) {
