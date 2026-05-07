@@ -5,8 +5,20 @@ const config = require('../config');
 const getConnection = () => {
   if (config.db.connectionString) {
     // If using Supabase / production URL, SSL is required
+    // Transaction pooler (port 6543) requires specific SSL configuration
+    const connectionString = config.db.connectionString;
+    
+    // Check if using transaction pooler (port 6543)
+    if (connectionString.includes(':6543/')) {
+      return {
+        connectionString: connectionString,
+        ssl: { rejectUnauthorized: false }
+      };
+    }
+    
+    // Direct connection or session pooler
     return {
-      connectionString: config.db.connectionString,
+      connectionString: connectionString,
       ssl: { rejectUnauthorized: false }
     };
   }

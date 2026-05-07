@@ -5,6 +5,7 @@
  * from the Philippines. Run this after running migrations to populate the database.
  */
 
+const knex = require('../db');
 const EducationVideo = require('../models/EducationVideo');
 
 const educationVideosData = [
@@ -822,9 +823,21 @@ const educationVideosData = [
 async function seedEducationVideos() {
   try {
     console.log('🎬 Starting education videos seeder...');
-    console.log(`📝 Inserting ${educationVideosData.length} videos...`);
     
-    const insertedVideos = await EducationVideo.bulkInsert(educationVideosData);
+    // Clear existing videos
+    console.log('�️  Clearing existing education videos...');
+    await knex('education_videos').del();
+    console.log('✅ Cleared existing videos');
+    
+    // Generate unique video_ids for each video
+    const videosWithUniqueIds = educationVideosData.map((video, index) => ({
+      ...video,
+      video_id: `edu_vid_${String(index + 1).padStart(3, '0')}`
+    }));
+    
+    console.log(`📝 Inserting ${videosWithUniqueIds.length} videos...`);
+    
+    const insertedVideos = await EducationVideo.bulkInsert(videosWithUniqueIds);
     
     console.log(`✅ Successfully inserted ${insertedVideos.length} videos`);
     console.log('\n📊 Videos by category:');
