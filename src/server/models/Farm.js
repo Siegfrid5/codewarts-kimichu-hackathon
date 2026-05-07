@@ -136,7 +136,13 @@ const Farm = {
    */
   async getAllWithRiskStatus() {
     return db(TABLE)
-      .select('farms.*', 'farm_risk_status.*')
+      .select(
+        'farms.*', 
+        'farm_risk_status.bph_risk', 
+        'farm_risk_status.blast_risk', 
+        'farm_risk_status.flood_risk',
+        'farm_risk_status.gdd_accumulated'
+      )
       .leftJoin('farm_risk_status', 'farms.id', 'farm_risk_status.farm_id');
   },
 };

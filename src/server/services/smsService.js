@@ -25,7 +25,7 @@ const SmsService = {
    * @param {string} message - Translated message body
    * @param {string} englishTemplate - Original English template (for auditing)
    * @param {string} farmId - Associated farm ID
-   * @param {string} alertType - 'digest' | 'panahon' | 'red_alert'
+   * @param {string} alertType - 'digest' | 'panahon' | 'red_alert' | 'chatbot'
    * @param {string} riskLevel - 'all_clear' | 'moderate' | 'red'
    */
   async send(phone, message, englishTemplate, farmId, alertType, riskLevel) {
