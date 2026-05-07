@@ -29,7 +29,7 @@ export default function Chatbot() {
   };
 
   return (
-    <div className="container animate-fade-in" style={{ maxWidth: '800px' }}>
+    <div className="container animate-fade-in" style={{ maxWidth: '800px', paddingTop: '6rem' }}>
       <div className="glass-panel" style={{ height: '70vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         
         {/* Header */}
