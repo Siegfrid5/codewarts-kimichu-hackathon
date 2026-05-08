@@ -50,6 +50,11 @@ const config = {
     apiToken: process.env.PHILSMS_API_TOKEN || '',
     senderId: process.env.PHILSMS_SENDER_ID || 'GABAYANI',
   },
+  traccar: {
+    url: process.env.TRACCAR_SMS_URL || 'https://www.traccar.org/sms/',
+    token: process.env.TRACCAR_SMS_TOKEN || '',
+    apiKey: process.env.TRACCAR_SMS_API_KEY || '',
+  },
 };
 
 /**
