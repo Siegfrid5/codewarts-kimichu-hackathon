@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { GoogleMap, useJsApiLoader, Polygon } from '@react-google-maps/api';
-import { RefreshCw, Thermometer, Droplets, CloudRain, Bug, Wind, AlertTriangle } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const libraries = ['geometry'];
@@ -153,7 +152,7 @@ export default function Dashboard() {
           alignItems: 'center',
           gap: '8px'
         }}>
-          <RefreshCw size={16} />
+          <span style={{ fontSize: '16px' }}>🔄</span>
           Refresh Data
         </button>
       </div>
@@ -290,7 +289,7 @@ export default function Dashboard() {
               transition: 'all 0.25s ease'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <Thermometer size={16} color="var(--primary)" strokeWidth={2.5} />
+                🌡️
                 <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--ink-muted)' }}>Temperature</span>
               </div>
               <p className="stat-number" style={{ fontSize: '36px', margin: 0, color: 'var(--ink)' }}>
@@ -306,7 +305,7 @@ export default function Dashboard() {
               transition: 'all 0.25s ease'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <Droplets size={16} color="var(--sky-accent)" strokeWidth={2.5} />
+                <span style={{ fontSize: '16px' }}>💧</span>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--ink-muted)' }}>Humidity</span>
               </div>
               <p className="stat-number" style={{ fontSize: '36px', margin: 0, color: 'var(--ink)' }}>
@@ -322,7 +321,7 @@ export default function Dashboard() {
               transition: 'all 0.25s ease'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <CloudRain size={16} color="var(--sky-accent)" strokeWidth={2.5} />
+                <span style={{ fontSize: '16px' }}>🌧️</span>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--ink-muted)' }}>Rain (1hr)</span>
               </div>
               <p className="stat-number" style={{ fontSize: '36px', margin: 0, color: 'var(--ink)' }}>
@@ -354,7 +353,7 @@ export default function Dashboard() {
               border: '1px solid var(--hairline)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Bug size={16} color="var(--earth)" strokeWidth={2} />
+                <span style={{ fontSize: '16px' }}>🐛</span>
                 <span style={{ fontWeight: 500, fontSize: '14px' }}>Brown Planthopper</span>
               </div>
               {getRiskBadge(farm.risk_status?.bph_risk)}
@@ -369,7 +368,7 @@ export default function Dashboard() {
               border: '1px solid var(--hairline)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Wind size={16} color="var(--earth)" strokeWidth={2} />
+                <span style={{ fontSize: '16px' }}>💨</span>
                 <span style={{ fontWeight: 500, fontSize: '14px' }}>Rice Blast</span>
               </div>
               {getRiskBadge(farm.risk_status?.blast_risk)}
@@ -384,7 +383,7 @@ export default function Dashboard() {
               border: '1px solid var(--hairline)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CloudRain size={16} color="var(--sky-accent)" strokeWidth={2} />
+                <span style={{ fontSize: '16px' }}>🌧️</span>
                 <span style={{ fontWeight: 500, fontSize: '14px' }}>Flood Risk</span>
               </div>
               {getRiskBadge(farm.risk_status?.flood_risk)}

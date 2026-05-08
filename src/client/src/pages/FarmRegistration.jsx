@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, ArrowRight, ArrowLeft, Leaf, AlertTriangle } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Polygon } from '@react-google-maps/api';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -370,7 +369,7 @@ export default function FarmRegistration() {
             justifyContent: 'center',
             margin: '0 auto 24px'
           }}>
-            <CheckCircle size={40} color="var(--primary)" />
+            <span style={{ fontSize: '40px' }}>✅</span>
           </div>
           <h2 style={{ marginBottom: '12px', fontSize: '30px' }}>{translations.registration.success.title}</h2>
           <p style={{ 
@@ -607,7 +606,7 @@ export default function FarmRegistration() {
                   gap: '8px'
                 }}
               >
-                <ArrowLeft size={18} />
+                <span style={{ fontSize: '18px' }}>←</span>
                 {translations.registration.common.back}
               </button>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -649,7 +648,7 @@ export default function FarmRegistration() {
                   }}
                 >
                   {loading ? translations.registration.steps.map.processing : translations.registration.steps.map.complete}
-                  {!loading && <ArrowRight size={18} />}
+                  {!loading && <span style={{ fontSize: '18px' }}>→</span>}
                 </button>
               </div>
             </div>
@@ -781,7 +780,7 @@ export default function FarmRegistration() {
                     gap: '8px'
                   }}
                 >
-                  <ArrowLeft size={18} />
+                  <span style={{ fontSize: '18px' }}>←</span>
                   {translations.registration.common.back}
                 </button>
               ) : (
@@ -812,7 +811,7 @@ export default function FarmRegistration() {
                     }}
                   >
                     {translations.registration.common.ok}
-                    <ArrowRight size={18} />
+                    <span style={{ fontSize: '18px' }}>→</span>
                   </button>
                 </div>
               )}

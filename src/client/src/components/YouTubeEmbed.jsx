@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Play } from 'lucide-react';
 
 const YouTubeEmbed = ({ videoId, title, description, duration, category }) => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -77,7 +76,7 @@ const YouTubeEmbed = ({ videoId, title, description, duration, category }) => {
                 boxShadow: '0 8px 24px rgba(43,122,61,0.4)'
               }}
             >
-              <Play size={28} color="white" fill="white" style={{ marginLeft: '3px' }} />
+              <span style={{ fontSize: '28px', color: 'white', marginLeft: '3px' }}>▶</span>
             </div>
             {/* Duration badge */}
             <div

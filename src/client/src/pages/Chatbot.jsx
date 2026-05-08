@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User, Leaf } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -120,7 +119,7 @@ export default function Chatbot() {
             justifyContent: 'center',
             flexShrink: 0
           }}>
-            <Leaf size={24} color="white" />
+            <span style={{ fontSize: '24px' }}>🌿</span>
           </div>
           <div style={{ flex: 1 }}>
             <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--on-primary)', fontWeight: 700 }}>GaBayAni Consultant</h3>
@@ -180,8 +179,8 @@ export default function Chatbot() {
                 justifyContent: 'center'
               }}>
                 {msg.role === 'user' 
-                  ? <User size={18} color="white" /> 
-                  : <Leaf size={18} color="white" />
+                  ? <span style={{ fontSize: '18px' }}>👤</span> 
+                  : <span style={{ fontSize: '18px' }}>🌿</span>
                 }
               </div>
               <div style={{ 
@@ -213,7 +212,7 @@ export default function Chatbot() {
                 justifyContent: 'center',
                 flexShrink: 0
               }}>
-                <Leaf size={18} color="white" />
+                <span style={{ fontSize: '18px' }}>🌿</span>
               </div>
               <div style={{ 
                 background: 'var(--canvas)',
@@ -274,7 +273,7 @@ export default function Chatbot() {
                 borderRadius: 'var(--rounded-pill)'
               }}
             >
-              <Send size={18} />
+              <span style={{ fontSize: '18px' }}>➤</span>
             </button>
           </form>
         </div>

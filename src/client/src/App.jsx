@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
-import { Sprout, LayoutDashboard, MessageSquare, BookOpen, Menu, X, Leaf } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
@@ -138,7 +137,7 @@ function Navbar() {
               justifyContent: 'center',
               flexShrink: 0
             }}>
-              <Leaf size={20} color="white" />
+              <span style={{ fontSize: '24px' }}>🌿</span>
             </div>
             <span style={{
               fontWeight: 800,
@@ -218,7 +217,7 @@ function Navbar() {
             }}
             aria-label="Toggle menu"
           >
-            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+            {mobileOpen ? <span style={{ fontSize: '24px' }}>❌</span> : <span style={{ fontSize: '24px' }}>📋</span>}
           </button>
         </div>
       </nav>
@@ -336,7 +335,7 @@ function Footer() {
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <Leaf size={18} color="white" />
+              <span style={{ fontSize: '18px' }}>🌿</span>
             </div>
             <span style={{ color: 'var(--inverse-ink)', fontWeight: 800, fontSize: '18px' }}>
               GaBayAni
@@ -393,7 +392,7 @@ function Footer() {
         fontSize: '13px',
         opacity: 0.6
       }}>
-        © 2026 GaBayAni — Built for Filipino Farmers 🌾
+        &copy; 2026 GaBayAni — Built for Filipino Farmers 🌾
       </div>
     </footer>
   );

@@ -1,5 +1,4 @@
 import { useLanguage } from '../contexts/LanguageContext';
-import { Globe } from 'lucide-react';
 
 const LanguageToggle = () => {
   const { language, toggleLanguage } = useLanguage();
@@ -36,7 +35,7 @@ const LanguageToggle = () => {
       }}
       aria-label="Toggle language"
     >
-      <Globe size={14} strokeWidth={2.5} />
+      <span style={{ fontSize: '14px' }}>🌐</span>
       <span>{language === 'en' ? 'EN' : 'TL'}</span>
     </button>
   );

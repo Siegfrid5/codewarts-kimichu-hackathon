@@ -3,7 +3,6 @@ import YouTubeEmbed from '../components/YouTubeEmbed';
 import { useLanguage } from '../contexts/LanguageContext';
 import { en } from '../translations/en';
 import { tl } from '../translations/tl';
-import { Search, BookOpen } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -89,7 +88,7 @@ export default function Education() {
           justifyContent: 'center',
           margin: '0 auto 20px'
         }}>
-          <BookOpen size={32} color="white" />
+          <span style={{ fontSize: '32px' }}>📚</span>
         </div>
         <h1 style={{
           fontSize: 'clamp(28px, 5vw, 40px)',
@@ -158,7 +157,7 @@ export default function Education() {
               e.currentTarget.style.boxShadow = 'none';
             }}
           >
-            <Search size={18} color="var(--ink-subtle)" />
+            <span style={{ fontSize: '18px', opacity: 0.5 }}>🔍</span>
             <input
               type="text"
               placeholder="Search videos..."
@@ -290,7 +289,7 @@ export default function Education() {
               justifyContent: 'center',
               margin: '0 auto 20px'
             }}>
-              <Search size={32} color="var(--ink-subtle)" />
+              <span style={{ fontSize: '32px', opacity: 0.5 }}>🔍</span>
             </div>
             <p style={{ 
               color: 'var(--ink-muted)',

@@ -5,7 +5,6 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { en } from '../translations/en';
 import { tl } from '../translations/tl';
 import { gsap } from 'gsap';
-import { ArrowRight, CloudSun, ShieldAlert, MessageSquareText, BrainCircuit } from 'lucide-react';
 
 export default function LandingPage() {
   const { language } = useLanguage();
@@ -39,10 +38,10 @@ export default function LandingPage() {
   }, []);
 
   const featureIcons = [
-    <CloudSun size={32} color="var(--primary)" strokeWidth={2} />,
-    <ShieldAlert size={32} color="var(--primary)" strokeWidth={2} />,
-    <MessageSquareText size={32} color="var(--primary)" strokeWidth={2} />,
-    <BrainCircuit size={32} color="var(--primary)" strokeWidth={2} />
+    <span style={{ fontSize: '32px' }}>☀️</span>,
+    <span style={{ fontSize: '32px' }}>🛡️</span>,
+    <span style={{ fontSize: '32px' }}>💬</span>,
+    <span style={{ fontSize: '32px' }}>🧠</span>
   ];
 
   return (
@@ -148,7 +147,7 @@ export default function LandingPage() {
                   fontWeight: 700
                 }}>
                   {translations.landing.hero.ctaPrimary}
-                  <ArrowRight size={18} />
+                  <span style={{ fontSize: '18px' }}>→</span>
                 </button>
               </Link>
               <a href="#features" style={{ textDecoration: 'none' }}>
@@ -383,7 +382,7 @@ export default function LandingPage() {
               gap: '8px'
             }}>
               {translations.landing.hero.ctaPrimary}
-              <ArrowRight size={18} />
+              <span style={{ fontSize: '18px' }}>→</span>
             </button>
           </Link>
         </div>

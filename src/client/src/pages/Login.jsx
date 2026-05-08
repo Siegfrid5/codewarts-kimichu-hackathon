@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Leaf, AlertTriangle } from 'lucide-react';
 
 export default function Login() {
   const [identifier, setIdentifier] = useState('');
@@ -48,7 +47,7 @@ export default function Login() {
             justifyContent: 'center',
             margin: '0 auto 16px'
           }}>
-            <Leaf size={28} color="white" />
+            <span style={{ fontSize: '28px' }}>🌿</span>
           </div>
           <h2 style={{ 
             margin: 0,
@@ -87,7 +86,7 @@ export default function Login() {
               fontWeight: 500,
               color: 'var(--semantic-error)'
             }}>
-              <AlertTriangle size={16} />
+              <span style={{ fontSize: '16px' }}>⚠️</span>
               {error}
             </div>
           )}
