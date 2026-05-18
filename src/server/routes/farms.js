@@ -7,7 +7,6 @@
  */
 
 const express = require('express');
-const Joi = require('joi');
 const Farm = require('../models/Farm');
 const FarmRiskStatus = require('../models/FarmRiskStatus');
 const DemCache = require('../models/DemCache');
@@ -20,6 +19,7 @@ const TemplateEngine = require('../services/templateEngine');
 const GeminiService = require('../services/geminiService');
 const { requireAuth } = require('../middleware/auth');
 const { AppError, asyncHandler } = require('../middleware/errorHandler');
+const { validate, farmRegistrationSchema } = require('../utils/validation');
 
 const router = express.Router();
 
